@@ -1,0 +1,33 @@
+{
+  "id": "noninferiority_t_margin05",
+  "title": "Non-inferiority t-test margin 0.5 raw units",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "noninferiority_t",
+  "target_power": 0.8,
+  "effect": {
+    "margin": 0.5,
+    "true_difference": 0.0,
+    "sd": 1.0,
+    "parameterization": "raw_noninferiority_margin"
+  },
+  "design": {
+    "allocation_ratio": 1,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "greater",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "One-sided non-inferiority against margin",
+    "Common SD",
+    "Not TOST equivalence"
+  ],
+  "status": "smoke"
+}

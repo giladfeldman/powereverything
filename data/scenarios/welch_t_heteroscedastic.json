@@ -1,0 +1,34 @@
+{
+  "id": "welch-t-unequal-variance-delta-050",
+  "title": "Welch unequal-variance two-sample t-test: mean difference = 0.50",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "welch_t",
+  "target_power": 0.8,
+  "effect": {
+    "mean_difference": 0.5,
+    "sd_group1": 1.0,
+    "sd_group2": 2.0,
+    "parameterization": "raw_mean_difference_and_group_specific_sds"
+  },
+  "design": {
+    "allocation_ratio": 1.5,
+    "equal_variance": false,
+    "attrition_rate": 0.1
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 10000,
+    "seed": 20260718
+  },
+  "assumptions": [
+    "Independent observations and approximately normal outcomes within each group.",
+    "The planned analysis is Welch's unequal-variance t-test, with a raw mean difference and one SD for each group.",
+    "The analytic value is a Welch-Satterthwaite noncentral-t planning approximation; the independent simulation applies the actual unequal-variance test."
+  ],
+  "status": "certification"
+}

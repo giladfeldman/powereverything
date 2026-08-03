@@ -1,0 +1,41 @@
+{
+  "source": "R 4.4.0 stats::pt and stats::qt; Welch-Satterthwaite noncentral-t planning approximation evaluated independently of SciPy",
+  "generated_on": "2026-07-18",
+  "generator": "scripts/benchmarks/legacy_r_stats_fixtures.R",
+  "reproduced_on": "2026-08-03",
+  "cases": [
+    {
+      "id": "unbalanced_sd_1_2_target_80",
+      "inputs": {
+        "n1": 116,
+        "n2": 174,
+        "mean_difference": 0.5,
+        "sd_group1": 1.0,
+        "sd_group2": 2.0,
+        "alpha": 0.05,
+        "alternative": "two.sided"
+      },
+      "expected": {
+        "power": 0.800198984625495,
+        "satterthwaite_df": 269.96691712459346
+      },
+      "minimal_at_ratio_1_5": true
+    },
+    {
+      "id": "unequal_sd_1_3_adjusted_alpha",
+      "inputs": {
+        "n1": 60,
+        "n2": 120,
+        "mean_difference": 0.5,
+        "sd_group1": 1.0,
+        "sd_group2": 3.0,
+        "alpha": 0.025,
+        "alternative": "two.sided"
+      },
+      "expected": {
+        "power": 0.2733822568581881,
+        "satterthwaite_df": 161.66336822074211
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "id": "planned_contrast_three_group",
+  "title": "Planned contrast among three groups f = .25",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "planned_contrast",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_f": 0.25,
+    "parameterization": "cohens_f_contrast"
+  },
+  "design": {
+    "groups": 3,
+    "contrast_weights": [
+      1,
+      -0.5,
+      -0.5
+    ],
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Contrast weights are pre-specified and sum to zero",
+    "Balanced groups",
+    "Normal homoscedastic outcomes"
+  ],
+  "status": "smoke"
+}

@@ -1,0 +1,32 @@
+{
+  "id": "poisson_rr15_rate02",
+  "title": "Poisson rate ratio 1.5 with baseline rate 0.2",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "poisson_regression",
+  "target_power": 0.8,
+  "effect": {
+    "rate_ratio": 1.5,
+    "parameterization": "rate_ratio"
+  },
+  "design": {
+    "baseline_rate": 0.2,
+    "exposure": 1,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Equal exposure",
+    "Balanced binary predictor",
+    "Poisson mean-variance relation"
+  ],
+  "status": "smoke"
+}

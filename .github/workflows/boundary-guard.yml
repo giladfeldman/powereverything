@@ -1,0 +1,34 @@
+# This repository holds the calculation engine only.
+#
+# The website that consumes it lives separately and must never be merged in here: a
+# monorepo is how the engine stops being independently auditable, which is the entire
+# reason this package is published on its own. Both sibling projects in this portfolio
+# that got the split right have a guard like this; the one that lacks it is the monorepo.
+
+name: boundary guard
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  no-application-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject application code
+        run: |
+          set -e
+          forbidden="studio api vercel.json node_modules package.json Dockerfile .vercel"
+          failed=0
+          for path in $forbidden; do
+            if [ -e "$path" ]; then
+              echo "::error::$path must not exist in the engine repository"
+              failed=1
+            fi
+          done
+          if find . -path ./.git -prune -o -type d \( -name studio -o -name node_modules \) -print | grep -q .; then
+            echo "::error::application directories found in the tree"
+            failed=1
+          fi
+          exit $failed

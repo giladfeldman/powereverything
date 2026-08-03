@@ -1,0 +1,34 @@
+{
+  "id": "bayes_factor_t_d040_bf3",
+  "title": "JZS Bayes-factor two-sample design analysis d=.40 BF10>=3",
+  "framework": "bayesian",
+  "goal": "required_sample_size",
+  "model": "bayes_factor_t",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_d": 0.4,
+    "parameterization": "standardized_mean_difference"
+  },
+  "design": {
+    "allocation_ratio": 1,
+    "bf_threshold": 3,
+    "bf_method": "jzs",
+    "r_scale": 0.7071,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "JZS Cauchy prior on standardized effect size",
+    "Point-null BF10 threshold",
+    "Not frequentist power"
+  ],
+  "status": "smoke"
+}

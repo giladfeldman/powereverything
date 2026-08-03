@@ -1,0 +1,31 @@
+{
+  "id": "correlation-rho-0.20",
+  "title": "Pearson correlation at rho = 0.20",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "correlation",
+  "target_power": 0.8,
+  "effect": {
+    "rho": 0.2,
+    "parameterization": "pearson_correlation"
+  },
+  "design": {
+    "distribution": "bivariate_normal",
+    "attrition_rate": 0.0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 5000,
+    "seed": 20260719
+  },
+  "assumptions": [
+    "Bivariate normal data",
+    "Pearson product-moment correlation",
+    "Fisher-z approximation for the analytic path"
+  ],
+  "status": "smoke"
+}

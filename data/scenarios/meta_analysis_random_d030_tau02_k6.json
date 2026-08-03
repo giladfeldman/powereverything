@@ -1,0 +1,33 @@
+{
+  "id": "meta_analysis_random_d030_tau02_k6",
+  "title": "Random-effects meta-analysis d=.30 tau=.20 across 6 studies",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "meta_analysis_random",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_d": 0.3,
+    "parameterization": "average_smd_with_heterogeneity"
+  },
+  "design": {
+    "studies": 6,
+    "tau": 0.2,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Random-effects average SMD with between-study SD tau",
+    "Equal two-group studies",
+    "Hartung-Knapp t critical when studies > 2",
+    "Not a fixed-effect plan"
+  ],
+  "status": "smoke"
+}

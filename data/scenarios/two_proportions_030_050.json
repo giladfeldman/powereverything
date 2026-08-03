@@ -1,0 +1,32 @@
+{
+  "id": "two_proportions_030_050",
+  "title": "Two proportions: .30 versus .50, two-sided 80% power",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "two_sample_proportion",
+  "target_power": 0.8,
+  "effect": {
+    "p_group1": 0.3,
+    "p_group2": 0.5,
+    "parameterization": "two_group_proportions"
+  },
+  "design": {
+    "allocation_ratio": 1,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 10000,
+    "seed": 20260718
+  },
+  "assumptions": [
+    "Independent binomial samples",
+    "Pooled two-proportion z test",
+    "Normal planning approximation"
+  ],
+  "status": "certification"
+}

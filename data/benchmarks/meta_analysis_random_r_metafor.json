@@ -1,0 +1,50 @@
+{
+  "fixture_id": "meta_analysis_random_r_metafor",
+  "scope": "meta_analysis_random",
+  "source": "R 4.4.0 metafor::rma(test = \"knha\") Monte Carlo, evaluated independently of SciPy and of the PowerBench simulator",
+  "r_version": "4.4.0",
+  "package": "metafor",
+  "package_version": "4.6-0",
+  "generated_on": "2026-08-03",
+  "generator": "scripts/benchmarks/meta_analysis_random_metafor.R",
+  "purpose": "Adjudicates the Hartung-Knapp random-effects reference. Guards against regression to the pre-2026-08-03 implementation, which combined three defects that partially offset: df = k - 2 instead of k - 1, no Hartung-Knapp variance rescaling, and a t critical value evaluated against a normal rejection probability.",
+  "design": {
+    "studies": 6,
+    "tau": 0.2,
+    "cohens_d": 0.3,
+    "n_per_group": 542,
+    "n_total": 6504,
+    "tau_squared": "fixed at the known value, matching the PowerBench planning contract",
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "test": "Hartung-Knapp adjusted random-effects summary, t reference with k - 1 df"
+  },
+  "monte_carlo": {
+    "replications": 400,
+    "seed": 11
+  },
+  "cases": [
+    {
+      "label": "Hartung-Knapp adjusted test, the method PowerBench claims to implement",
+      "inputs": {"studies": 6, "n_per_group": 542, "cohens_d": 0.3, "tau": 0.2, "alpha": 0.05, "alternative": "two.sided"},
+      "expected": {"power": 0.7900, "mean_se": 0.08106},
+      "tolerance": 0.05,
+      "note": "PowerBench reference gives 0.8000 and its simulator gives 0.7990 at this N. All three agree within Monte Carlo error (400 replications give an MC SE of about 0.02)."
+    },
+    {
+      "label": "unadjusted inverse-variance test, recorded to show what the HK adjustment costs",
+      "inputs": {"studies": 6, "n_per_group": 542, "cohens_d": 0.3, "tau": 0.2, "alpha": 0.05, "alternative": "two.sided"},
+      "expected": {"power": 0.9175, "mean_se": 0.08539},
+      "tolerance": 0.05,
+      "note": "Not the method PowerBench implements. Recorded because the difference (0.92 vs 0.79) is exactly the magnitude of the error the pre-fix hybrid produced, so a future regression toward the unadjusted test is easy to recognise."
+    }
+  ],
+  "q_statistic_check": {
+    "note": "The Hartung-Knapp rescaling factor q = sum_i w_i (y_i - mu)^2 / (k - 1) must have E[q] = 1 and follow chi-square_{k-1}/(k-1); this is what makes the summary statistic non-central t and licenses the closed-form power expression.",
+    "observed_mean": 1.0023,
+    "observed_variance": 0.3961,
+    "expected_mean": 1.0,
+    "expected_variance": 0.4,
+    "replications": 3000
+  }
+}

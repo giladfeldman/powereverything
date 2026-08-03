@@ -1,0 +1,32 @@
+{
+  "id": "two-sample-t-unbalanced-d-0.30",
+  "title": "Unbalanced pooled-variance two-sample t-test at d = 0.30",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "two_sample_t",
+  "target_power": 0.9,
+  "effect": {
+    "cohens_d": 0.3,
+    "parameterization": "standardized_mean_difference"
+  },
+  "design": {
+    "allocation_ratio": 1.5,
+    "equal_variance": true,
+    "attrition_rate": 0.1
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 5000,
+    "seed": 20260718
+  },
+  "assumptions": [
+    "Independent observations",
+    "The analysis uses a pooled-variance t-test",
+    "Attrition is recorded but not yet inflated by this initial adapter"
+  ],
+  "status": "smoke"
+}

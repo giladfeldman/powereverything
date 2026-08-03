@@ -1,0 +1,30 @@
+{
+  "source": "R 4.4.0 stats::pchisq and stats::qchisq; noncentral chi-square multinomial goodness-of-fit planning approximation evaluated independently of SciPy",
+  "generated_on": "2026-07-18",
+  "generator": "scripts/benchmarks/legacy_r_stats_fixtures.R",
+  "reproduced_on": "2026-08-03",
+  "cases": [
+    {
+      "id": "three_category_w_0231_target_80",
+      "inputs": {
+        "n": 181,
+        "p_null": [
+          0.5,
+          0.3,
+          0.2
+        ],
+        "p_alternative": [
+          0.4,
+          0.4,
+          0.2
+        ],
+        "alpha": 0.05
+      },
+      "expected": {
+        "cohens_w": 0.2309401076758504,
+        "power": 0.8008121674407902
+      },
+      "minimal": true
+    }
+  ]
+}

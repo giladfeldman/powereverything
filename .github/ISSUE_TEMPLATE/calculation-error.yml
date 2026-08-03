@@ -1,0 +1,64 @@
+name: Suspected calculation error
+description: Report a sample size or power value you believe is wrong.
+title: "[calc] <method>: <what looks wrong>"
+labels: ["calculation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you — this is the most valuable kind of report this project receives.
+
+        You do not need to be certain. Many apparent disagreements between tools are
+        *estimand* differences rather than errors, and those still become useful case
+        studies in `docs/discrepancies/`.
+  - type: input
+    id: method
+    attributes:
+      label: Method and version
+      description: >
+        The planner model id and its version, e.g. `ordinal_regression@2.0.0`. Get it from
+        `/api/health` or `powerbench.method_fingerprint("ordinal_regression")`.
+      placeholder: ordinal_regression@2.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: inputs
+    attributes:
+      label: Exact inputs
+      description: >
+        Effect size, alpha, target power, alternative, and every design field. A scenario
+        JSON is ideal — paste the whole thing.
+      render: json
+    validations:
+      required: true
+  - type: input
+    id: observed
+    attributes:
+      label: What PowerBench returned
+      placeholder: "N = 191, power = 0.800"
+    validations:
+      required: true
+  - type: input
+    id: expected
+    attributes:
+      label: What you expected
+      placeholder: "N = 614"
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: What produced your expectation
+      description: >
+        Name the tool and version (G*Power 3.1.9.7, R pwr 1.3.0, MASS::polr, PASS), or the
+        textbook/paper and equation. If you know the tool's own parameterization — which
+        predictor distribution it assumes, which test variant, which df convention —
+        please say so: that is usually what settles whether this is a defect or a
+        difference of question.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Optional.

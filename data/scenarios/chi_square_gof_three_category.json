@@ -1,0 +1,43 @@
+{
+  "id": "chi-square-gof-three-category-w-0231",
+  "title": "Chi-square goodness-of-fit: three categories, w = 0.231",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "chi_square_gof",
+  "target_power": 0.8,
+  "effect": {
+    "p_null": [
+      0.5,
+      0.3,
+      0.2
+    ],
+    "p_alternative": [
+      0.4,
+      0.4,
+      0.2
+    ],
+    "cohens_w": 0.2309401076758503,
+    "parameterization": "null_and_alternative_multinomial_probabilities"
+  },
+  "design": {
+    "categories": 3,
+    "min_expected_count": 5,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 10000,
+    "seed": 20260718
+  },
+  "assumptions": [
+    "Independent observations in mutually exclusive and exhaustive categories.",
+    "The prespecified primary analysis is Pearson's multinomial chi-square goodness-of-fit test.",
+    "The analytic result is a noncentral chi-square approximation; every expected null cell count is at least five at the returned N.",
+    "Sparse, adaptive, collapsed, or post-hoc category analyses require a design-specific simulation or exact method."
+  ],
+  "status": "certification"
+}

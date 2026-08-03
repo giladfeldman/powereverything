@@ -1,0 +1,35 @@
+{
+  "id": "tost_equivalence_dbounds",
+  "title": "TOST equivalence within +/- 0.5 raw units",
+  "framework": "equivalence",
+  "goal": "required_sample_size",
+  "model": "tost_equivalence",
+  "target_power": 0.8,
+  "effect": {
+    "lower_bound": -0.5,
+    "upper_bound": 0.5,
+    "true_difference": 0.0,
+    "sd": 1.0,
+    "parameterization": "raw_equivalence_bounds"
+  },
+  "design": {
+    "allocation_ratio": 1,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Equivalence is declared only if both one-sided tests reject",
+    "Common SD",
+    "Normal outcomes",
+    "Not a superiority test"
+  ],
+  "status": "smoke"
+}

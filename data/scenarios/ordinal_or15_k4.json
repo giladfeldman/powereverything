@@ -1,0 +1,31 @@
+{
+  "id": "ordinal_or15_k4",
+  "title": "Ordinal proportional odds OR=1.5 with 4 categories",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "ordinal_regression",
+  "target_power": 0.8,
+  "effect": {
+    "odds_ratio": 1.5,
+    "parameterization": "proportional_odds_ratio"
+  },
+  "design": {
+    "categories": 4,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Proportional odds",
+    "Ordered categories",
+    "Binary predictor at 50%"
+  ],
+  "status": "smoke"
+}

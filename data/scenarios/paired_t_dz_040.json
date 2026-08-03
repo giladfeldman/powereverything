@@ -1,0 +1,30 @@
+{
+  "id": "paired_t_dz_040",
+  "title": "Paired t-test: dz = 0.40, two-sided 80% power",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "paired_t",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_dz": 0.4,
+    "parameterization": "standardized_mean_change"
+  },
+  "design": {
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 10000,
+    "seed": 20260718
+  },
+  "assumptions": [
+    "Paired observations",
+    "Normal change scores",
+    "Cohen's dz parameterization"
+  ],
+  "status": "certification"
+}

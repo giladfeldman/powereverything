@@ -1,0 +1,53 @@
+{
+  "fixture_id": "ordinal_regression_r_polr",
+  "scope": "ordinal_regression",
+  "source": "R 4.4.0 MASS::polr(method = \"logistic\") Monte Carlo, evaluated independently of SciPy and of the PowerBench simulator",
+  "r_version": "4.4.0",
+  "package": "MASS",
+  "package_version": "7.3-60.2",
+  "generated_on": "2026-08-03",
+  "generator": "scripts/benchmarks/ordinal_regression_polr.R",
+  "purpose": "Adjudicates the Whitehead (1993) proportional-odds reference against an established third-party ordinal fitter. Guards against regression to the pre-2026-08-03 implementation, which used a flat Var(beta) = 4/n, ignored the declared `categories`, and returned N = 191 for a design that needs roughly 614.",
+  "design": {
+    "predictor": "balanced binary, P1 = P2 = 0.5",
+    "latent_model": "standard logistic with equally spaced thresholds at seq(-1, 1, length.out = categories - 1)",
+    "odds_ratio": 1.5,
+    "categories": 4,
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "test": "Wald z on the proportional-odds slope"
+  },
+  "monte_carlo": {
+    "replications": 3000,
+    "seed": 20260803,
+    "converged": 3000
+  },
+  "cases": [
+    {
+      "label": "sample size shipped by the defective pre-fix implementation",
+      "inputs": {"n_total": 191, "odds_ratio": 1.5, "categories": 4, "alpha": 0.05, "alternative": "two.sided"},
+      "expected": {"power": 0.3440},
+      "tolerance": 0.02,
+      "note": "The pre-fix engine reported 0.80 power here. Independent confirmation that the shipped sample size delivered roughly a third of the promised power."
+    },
+    {
+      "label": "sample size produced by the Whitehead (1993) reference",
+      "inputs": {"n_total": 614, "odds_ratio": 1.5, "categories": 4, "alpha": 0.05, "alternative": "two.sided"},
+      "expected": {"power": 0.8063},
+      "tolerance": 0.02,
+      "note": "Whitehead reference gives 0.8001 and the PowerBench proportional-odds simulator gives 0.7973 at this N; all three agree within Monte Carlo error."
+    }
+  ],
+  "coefficient_agreement": {
+    "note": "Per-dataset Wald z from the PowerBench proportional-odds fitter versus MASS::polr on identical simulated data (n = 300, categories = 4, OR = 1.5). Confirms the simulator is a genuine ordinal fit rather than a binary collapse.",
+    "max_absolute_difference": 5.2e-05,
+    "pairs": [
+      {"powerbench_z": 1.4190104423, "polr_z": 1.4189957554},
+      {"powerbench_z": 1.4142661381, "polr_z": 1.4142651844},
+      {"powerbench_z": 1.4118268678, "polr_z": 1.4118272725},
+      {"powerbench_z": 2.3233375693, "polr_z": 2.3233296373},
+      {"powerbench_z": 2.5040611292, "polr_z": 2.5040092911},
+      {"powerbench_z": 1.2870306321, "polr_z": 1.2870301066}
+    ]
+  }
+}

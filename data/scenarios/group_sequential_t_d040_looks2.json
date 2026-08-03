@@ -1,0 +1,33 @@
+{
+  "id": "group_sequential_t_d040_looks2",
+  "title": "Group-sequential two-sample t d=.40 with 2 OBF looks",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "group_sequential_t",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_d": 0.4,
+    "parameterization": "standardized_mean_difference"
+  },
+  "design": {
+    "allocation_ratio": 1,
+    "looks": 2,
+    "equal_variance": true,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "O'Brien-Fleming inflation",
+    "Equally spaced looks",
+    "Final-look analysis check"
+  ],
+  "status": "smoke"
+}

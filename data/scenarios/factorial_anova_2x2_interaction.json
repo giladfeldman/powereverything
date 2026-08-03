@@ -1,0 +1,33 @@
+{
+  "id": "factorial_anova_2x2_interaction",
+  "title": "2x2 factorial interaction f = .25",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "factorial_anova",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_f": 0.25,
+    "parameterization": "cohens_f_tested_term"
+  },
+  "design": {
+    "levels_a": 2,
+    "levels_b": 2,
+    "tested_term": "AB",
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Balanced cells",
+    "Normal homoscedastic outcomes",
+    "Primary test is the AB interaction"
+  ],
+  "status": "smoke"
+}

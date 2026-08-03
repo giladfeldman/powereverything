@@ -1,0 +1,48 @@
+{
+  "fixture_id": "logistic_regression_r_glm",
+  "scope": "logistic_regression",
+  "source": "R 4.4.0 stats::glm(family = binomial) Monte Carlo, evaluated independently of SciPy and of the PowerBench simulator",
+  "r_version": "4.4.0",
+  "package": "stats",
+  "package_version": "4.4.0",
+  "generated_on": "2026-08-03",
+  "generator": "scripts/benchmarks/logistic_regression_glm.R",
+  "purpose": "Adjudicates the Demidenko (2007) Wald reference for a balanced binary predictor. Guards against regression to the pre-2026-08-03 implementation, which evaluated the binomial variance only at the baseline probability and produced sign-varying error in required N (+6% to +21% for p0 < 0.5, but -6% at p0 = 0.5).",
+  "design": {
+    "predictor": "balanced binary, P0 = P1 = 0.5",
+    "outcome_model": "logit(p) = log(p0 / (1 - p0)) + log(odds_ratio) * x",
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "test": "Wald z on the logistic slope from stats::glm"
+  },
+  "monte_carlo": {
+    "replications": 3000,
+    "seed": 7,
+    "converged": 3000
+  },
+  "cases": [
+    {
+      "label": "sample size produced by the Demidenko binary-predictor reference",
+      "inputs": {"n_total": 856, "odds_ratio": 1.5, "p_baseline": 0.30, "predictor_type": "binary", "alpha": 0.05, "alternative": "two.sided"},
+      "expected": {"power": 0.8050},
+      "tolerance": 0.02,
+      "note": "PowerBench reference gives 0.8002 at this N. Agreement within Monte Carlo error."
+    },
+    {
+      "label": "sample size from pwrss under its default NORMAL predictor - a different estimand",
+      "inputs": {"n_total": 249, "odds_ratio": 1.5, "p_baseline": 0.30, "predictor_type": "binary", "alpha": 0.05, "alternative": "two.sided"},
+      "expected": {"power": 0.3120},
+      "tolerance": 0.03,
+      "note": "Recorded deliberately as an assumption-difference case study, not a tool disagreement. pwrss.z.logreg(method = 'demidenko') defaults to 'Predictor Dist.: Normal' and returns N = 249; under a balanced BINARY predictor that sample size delivers 0.31 power. A cross-tool comparison that ignored the predictor distribution would wrongly read this as a 3.4x defect in one of the two tools."
+    }
+  ],
+  "external_tool_comparison": {
+    "tool": "r.pwrss",
+    "package_version": "0.3.1",
+    "call": "pwrss.z.logreg(p0 = 0.30, odds.ratio = 1.5, power = 0.80, alpha = 0.05, alternative = 'not equal', method = 'demidenko')",
+    "reported_n": 249,
+    "powerbench_n": 856,
+    "category": "effect_definition",
+    "explanation": "pwrss defaults to a standard-normal predictor, where the effect is a one-SD change; PowerBench's binary branch defines the effect as the contrast between two equally sized groups. Both are correct for their own estimand. Monte Carlo with a balanced binary predictor confirms PowerBench's N; pwrss must be called with dist = list(dist = 'bernoulli', prob = 0.5) to be comparable."
+  }
+}

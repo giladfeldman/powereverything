@@ -1,0 +1,36 @@
+{
+  "id": "rope_equivalence_t_dbounds",
+  "title": "Bayesian ROPE equivalence within +/- 0.5 raw units",
+  "framework": "bayesian",
+  "goal": "required_sample_size",
+  "model": "rope_equivalence_t",
+  "target_power": 0.8,
+  "effect": {
+    "lower_bound": -0.5,
+    "upper_bound": 0.5,
+    "true_difference": 0.0,
+    "sd": 1.0,
+    "parameterization": "raw_rope_bounds"
+  },
+  "design": {
+    "allocation_ratio": 1,
+    "prior_sd": 10.0,
+    "rope_threshold": 0.95,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Posterior Prob(delta in ROPE) >= 0.95",
+    "Normal-normal conjugate update",
+    "Distinct from TOST"
+  ],
+  "status": "smoke"
+}

@@ -1,0 +1,31 @@
+{
+  "id": "one_way_anova_f025_k3",
+  "title": "One-way ANOVA: f = .25, 3 groups, 80% power",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "one_way_anova",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_f": 0.25,
+    "parameterization": "cohens_f"
+  },
+  "design": {
+    "groups": 3,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 10000,
+    "seed": 20260718
+  },
+  "assumptions": [
+    "Balanced groups",
+    "Normal homoscedastic outcomes",
+    "Omnibus F test"
+  ],
+  "status": "certification"
+}

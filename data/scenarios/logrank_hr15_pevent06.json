@@ -1,0 +1,32 @@
+{
+  "id": "logrank_hr15_pevent06",
+  "title": "Two-arm log-rank HR=1.5 with 60% events",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "logrank_two_arm",
+  "target_power": 0.8,
+  "effect": {
+    "hazard_ratio": 1.5,
+    "p_event": 0.6,
+    "parameterization": "hazard_ratio_and_event_probability"
+  },
+  "design": {
+    "allocation_ratio": 1,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Proportional hazards",
+    "Schoenfeld events then N = events / p_event",
+    "Exponential event times in the simulation"
+  ],
+  "status": "smoke"
+}

@@ -1,0 +1,32 @@
+{
+  "id": "incremental_regression_f2_015",
+  "title": "Incremental regression: f2 = .15, one-predictor block, 80% power",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "incremental_regression",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_f2": 0.15,
+    "parameterization": "incremental_cohens_f_squared"
+  },
+  "design": {
+    "total_predictors": 4,
+    "tested_predictors": 1,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 10000,
+    "seed": 20260718
+  },
+  "assumptions": [
+    "Pre-specified final predictor block",
+    "Fixed-design noncentral F",
+    "Independent normal predictors and errors in simulation"
+  ],
+  "status": "certification"
+}
