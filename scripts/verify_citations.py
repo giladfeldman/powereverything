@@ -43,11 +43,15 @@ def main() -> int:
     rows = list(csv.DictReader(REGISTRY.open(encoding="utf-8")))
     problems = 0
     checked = 0
+    skipped: list[str] = []
 
     for row in rows:
         match = DOI_PATTERN.search(row.get("source_url", ""))
         if not match:
-            # Documentation URLs are checked by reachability, not by Crossref.
+            # Documentation URLs have no DOI, so Crossref cannot adjudicate them. Report
+            # them explicitly rather than passing over them: a summary of "checked 14"
+            # against an 18-row registry reads as full coverage when it is not.
+            skipped.append(row["citation_id"])
             continue
         checked += 1
         doi = match.group(0).rstrip(".,);")
@@ -71,7 +75,11 @@ def main() -> int:
         safe_title = title.encode("ascii", "replace").decode()
         print(f"OK    {row['citation_id']:<26} {year} {safe_title[:60]}{note}")
 
-    print(f"\nchecked {checked} DOIs, {problems} unresolvable")
+    print(f"\nchecked {checked} of {len(rows)} registry rows against Crossref, {problems} unresolvable")
+    if skipped:
+        print(f"not checkable by DOI ({len(skipped)}): {', '.join(skipped)}")
+        print("  These are documentation URLs, which Crossref cannot adjudicate. Verify")
+        print("  their reachability separately rather than reading this run as full coverage.")
     return 1 if (args.strict and problems) else 0
 
 

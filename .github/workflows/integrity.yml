@@ -1,0 +1,50 @@
+# Citation and capture integrity.
+#
+# These verify claims *about external sources* rather than code behaviour, so they need
+# network access and are kept out of the fast suite. Scheduled weekly because the failure
+# mode is drift -- a DOI that stops resolving, or a capture whose scenario changed
+# underneath it -- rather than a regression a push would introduce.
+#
+# No Anthropic API calls anywhere in CI (portfolio hard rule).
+
+name: integrity
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+  push:
+    paths:
+      - "data/citation_registry.csv"
+      - "data/gpower_captures/**"
+      - "scripts/verify_citations.py"
+      - "scripts/sign_gpower_capture.py"
+
+jobs:
+  citations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Every registered DOI resolves
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python scripts/verify_citations.py --strict
+
+      - name: Committed G*Power captures are signed, current and complete
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python scripts/sign_gpower_capture.py --verify
+
+      - name: Benchmark fixtures are re-derivable
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m pytest -q tests/test_benchmark_fixture_provenance.py
