@@ -4,8 +4,7 @@ The registry's `status` column was hand-asserted until 2026-08-03: nothing check
 registered source actually resolves, or that its title and year match what the row claims.
 That is the same trust problem as an uncited number, one level up.
 
-This script does what `scripts/resolve_legacy_links.py` already does for guide links: asks
-Crossref, and reports a mismatch rather than assuming.
+This script asks Crossref and reports a mismatch rather than assuming.
 
     python scripts/verify_citations.py
     python scripts/verify_citations.py --strict   # exit non-zero on any problem
