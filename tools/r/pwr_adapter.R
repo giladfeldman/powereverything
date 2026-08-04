@@ -46,6 +46,14 @@ if (scenario$model == "two_sample_t") {
 } else if (scenario$model == "two_sample_proportion") {
   # pwr.2p.test is balanced-only; the adapter refuses unbalanced designs on the
   # Python side rather than silently reporting a balanced answer for one.
+  #
+  # ES.h is ANTISYMMETRIC: ES.h(p1,p2) == -ES.h(p2,p1). Here that is harmless because
+  # pwr squares h for a two-sided test -- verified, both signs give n_total = 186 for
+  # p1=.30, p2=.50. It would NOT be harmless one-sided: `pwr.2p.test(h = <negative>,
+  # alternative = "greater")` dies inside uniroot with "f() values at end points not of
+  # opposite sign". Both this script (line 5) and the Python `supports()` restrict the
+  # adapter to two.sided, so the crash is unreachable today. Anyone lifting that
+  # restriction must pass abs(h) with the direction supplied via `alternative`.
   h <- pwr::ES.h(scenario$effect$p_group1, scenario$effect$p_group2)
   answer <- pwr::pwr.2p.test(h = h, sig.level = scenario$decision_rule$alpha, power = scenario$target_power, alternative = "two.sided")
   n <- ceiling(answer$n)
