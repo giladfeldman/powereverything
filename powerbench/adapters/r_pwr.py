@@ -68,6 +68,51 @@ _PWR_PARAMETERIZATIONS: dict[str, Parameterization] = {
         rounding_rule="ceiling to the smallest integer meeting target power",
         tails_support="two.sided|greater|less",
     ),
+    "one_sample_proportion": Parameterization(
+        effect_definition="Cohen's arcsine h, 2*asin(sqrt(p1)) - 2*asin(sqrt(p0))",
+        test_variant="normal approximation on the arcsine scale",
+        df_convention="not applicable (z test)",
+        rounding_rule="ceiling to the smallest integer meeting target power",
+        tails_support="two.sided|greater|less",
+        notes=(
+            "pwr.p.test is an APPROXIMATION; PowerBench uses an exact binomial "
+            "rejection region. The two legitimately disagree — for p0=.30, "
+            "p1=.50, power=.80 pwr returns 47 and PowerBench 43. Verified "
+            "independently in R: exact binomial power at n=43 is 0.819812, so "
+            "43 is the correct exact answer and the gap is the arcsine "
+            "approximation's cost, not a defect. Exact tests are also "
+            "non-monotonic in n (n=43 beats n=44 and n=46), which no normal "
+            "approximation can reproduce."
+        ),
+    ),
+    "two_sample_proportion": Parameterization(
+        effect_definition="Cohen's arcsine h between the two group proportions",
+        test_variant="normal approximation on the arcsine scale",
+        df_convention="not applicable (z test)",
+        rounding_rule="ceiling per group, doubled for the total",
+        allocation_support="balanced only (pwr.2p.test); unbalanced needs pwr.2p2n.test",
+        tails_support="two.sided|greater|less",
+        notes=(
+            "PowerBench uses a pooled-variance two-proportion z test on the raw "
+            "scale; pwr works on the arcsine scale. They agree exactly at "
+            "n_total=186 for p1=.30, p2=.50, but that agreement is not "
+            "guaranteed away from this region."
+        ),
+    ),
+    "chi_square_independence": Parameterization(
+        effect_definition="Cohen's w via ES.w2 from the joint cell probabilities",
+        test_variant="noncentral chi-square approximation",
+        df_convention="(rows - 1) * (cols - 1)",
+        rounding_rule="ceiling to the smallest integer meeting target power",
+        tails_support="two.sided",
+        notes=(
+            "pwr.chisq.test enforces NO minimum expected cell count; PowerBench "
+            "enforces min_expected_count from the scenario design (5 here). That "
+            "is why pwr returns 48 and PowerBench 50 — PowerBench's floor is "
+            "binding, not a disagreement about the noncentral chi-square. The "
+            "same caveat already applies to chi_square_gof above."
+        ),
+    ),
 }
 
 
@@ -98,15 +143,35 @@ class RPwrAdapter(Adapter):
     def parameterization(self, method_id: str) -> Parameterization:
         return _PWR_PARAMETERIZATIONS.get(method_id, Parameterization())
 
+    #: Models with a balanced-only pwr entry point. Reporting a balanced answer
+    #: for an unbalanced design would be a fabricated comparison, so these are
+    #: declined outright when allocation_ratio != 1.
+    _BALANCED_ONLY = {"two_sample_t", "two_sample_proportion"}
+
     def supports(self, scenario: Scenario) -> bool:
-        return (scenario.model in {"two_sample_t", "paired_t", "chi_square_gof", "one_way_anova", "linear_regression", "incremental_regression", "correlation"}
-                and scenario.goal == "required_sample_size"
-                and scenario.decision_rule.alternative == "two.sided"
-                and (scenario.model != "two_sample_t" or scenario.design.get("allocation_ratio", 1.0) == 1.0))
+        if scenario.model not in {
+            "two_sample_t", "paired_t", "chi_square_gof", "one_way_anova",
+            "linear_regression", "incremental_regression", "correlation",
+            "one_sample_proportion", "two_sample_proportion", "chi_square_independence",
+        }:
+            return False
+        if scenario.goal != "required_sample_size":
+            return False
+        if scenario.decision_rule.alternative != "two.sided":
+            return False
+        if scenario.model in self._BALANCED_ONLY and scenario.design.get("allocation_ratio", 1.0) != 1.0:
+            return False
+        # NOTE: attrition_rate is deliberately NOT a reason to decline. PowerBench
+        # reports the ANALYSIS n in `reference.n_total` and inflates separately into
+        # `recruitment_total` (200 vs 223 for the balanced d=0.40 scenario), and the
+        # matrix compares the analysis n. pwr answers that same question, so gating on
+        # attrition would drop a valid comparison. Caught by
+        # test_studio_two_sample_plan_is_assumption_visible.
+        return True
 
     def run(self, scenario: Scenario) -> dict:
         if not self.supports(scenario):
-            return {"status": "unsupported", "reason": "pwr adapter supports matched two-sided t, correlation, one-way ANOVA, and overall-regression scenarios only"}
+            return {"status": "unsupported", "reason": "pwr adapter supports two-sided required-sample-size scenarios for t, correlation, one-way ANOVA, regression, proportion, and chi-square designs, with balanced allocation where the pwr entry point is balanced-only"}
         with tempfile.TemporaryDirectory() as tmp:
             source, output = Path(tmp) / "scenario.json", Path(tmp) / "result.json"
             source.write_text(json.dumps(scenario.to_dict()), encoding="utf-8")

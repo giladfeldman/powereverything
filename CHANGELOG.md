@@ -10,6 +10,47 @@ version and only when a method's answers change. See
 
 ---
 
+## 0.8.1 — 2026-08-04
+
+**No computed answer changes.** No method version is bumped: `references.py`,
+`specialist_extras.py` and `simulation.py` are untouched. This release widens external
+comparison coverage only.
+
+### Cross-tool coverage: 12 → 15 of 28 scenarios
+
+The R `pwr` adapter now also answers one-sample proportion, two-sample proportion, and
+chi-square test of independence. No new R package is required — these use `pwr.p.test`,
+`pwr.2p.test`, and `pwr.chisq.test` with `ES.h` / `ES.w2`.
+
+Two of the three disagree with PowerBench, and both gaps are declared in the adapter's
+`parameterization()` so they are attributed rather than reported as bare numbers:
+
+- **One-sample proportion** (p₀=.30, p₁=.50, power=.80): `pwr` 47, PowerBench 43. `pwr.p.test`
+  is a normal approximation on Cohen's arcsine scale; PowerBench uses an exact binomial
+  rejection region. Verified independently in R — exact binomial power at n=43 is 0.819812,
+  so 43 is correct and the gap is the approximation's cost. Exact tests are also
+  non-monotonic in n here (n=43 beats n=44 and n=46), which no normal approximation
+  reproduces.
+- **Chi-square independence** (2×2, joint cell probabilities): `pwr` 48, PowerBench 50.
+  `pwr.chisq.test` enforces no minimum expected cell count; PowerBench applies the
+  scenario's `min_expected_count` of 5, and that floor is binding. Not a disagreement about
+  the noncentral chi-square.
+- **Two-sample proportion** (p₁=.30, p₂=.50): both return n_total=186.
+
+The adapter declines unbalanced two-sample proportion designs rather than reporting a
+balanced answer for one, since `pwr.2p.test` is balanced-only.
+
+### Fixed
+
+- `scripts/refresh_validation_matrix.py`: tool order within a matrix cell is now canonical,
+  and `--check` compares tools by `tool_id` instead of by position. `adapters_for()`
+  appended `r.specialist` / `desktop.gpower` only when the registry did not already contain
+  them, so their position varied by call path; a positional comparison then diffed `r.pwr`
+  against `desktop.gpower` and reported the committed matrix stale when it was correct.
+  This is the same defect class as the 0.8.0 cell-order fix, one level down. Regression test
+  in `tests/test_validation_matrix_ordering.py` asserts both directions — reordering must
+  not read as drift, and a one-unit change to an external `n_total` must still fail.
+
 ## 0.8.0 — 2026-08-03
 
 First public release.

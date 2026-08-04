@@ -19,7 +19,7 @@ from .versioning import (
     method_version,
 )
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 __all__ = [
     "Scenario",

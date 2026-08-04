@@ -35,5 +35,30 @@ if (scenario$model == "two_sample_t") {
   answer <- pwr::pwr.r.test(r = scenario$effect$rho, sig.level = scenario$decision_rule$alpha, power = scenario$target_power, alternative = "two.sided")
   n <- ceiling(answer$n)
   result <- list(package = "pwr", package_version = as.character(utils::packageVersion("pwr")), assumptions = list("Fisher-z approximation", "Pearson correlation"), result = list(n_total = n, power = answer$power, method = "pwr.r.test"))
+} else if (scenario$model == "one_sample_proportion") {
+  # pwr uses Cohen's arcsine h with a NORMAL approximation. PowerBench uses an
+  # exact binomial rejection region, so a gap here is an expected method
+  # difference, not a defect (see parameterization notes on the Python side).
+  h <- pwr::ES.h(scenario$effect$p_alternative, scenario$effect$p_null)
+  answer <- pwr::pwr.p.test(h = h, sig.level = scenario$decision_rule$alpha, power = scenario$target_power, alternative = "two.sided")
+  n <- ceiling(answer$n)
+  result <- list(package = "pwr", package_version = as.character(utils::packageVersion("pwr")), assumptions = list("Cohen arcsine effect size h", "normal approximation", "no exact binomial correction"), result = list(n_total = n, power = answer$power, cohens_h = h, method = "pwr.p.test"))
+} else if (scenario$model == "two_sample_proportion") {
+  # pwr.2p.test is balanced-only; the adapter refuses unbalanced designs on the
+  # Python side rather than silently reporting a balanced answer for one.
+  h <- pwr::ES.h(scenario$effect$p_group1, scenario$effect$p_group2)
+  answer <- pwr::pwr.2p.test(h = h, sig.level = scenario$decision_rule$alpha, power = scenario$target_power, alternative = "two.sided")
+  n <- ceiling(answer$n)
+  result <- list(package = "pwr", package_version = as.character(utils::packageVersion("pwr")), assumptions = list("Cohen arcsine effect size h", "balanced allocation", "normal approximation"), result = list(n1 = n, n2 = n, n_total = 2 * n, power = answer$power, cohens_h = h, method = "pwr.2p.test"))
+} else if (scenario$model == "chi_square_independence") {
+  # ES.w2 takes the JOINT cell probability matrix and derives w from the
+  # implied marginals, which is exactly the parameterization the scenario uses.
+  joint <- scenario$effect$joint_probabilities
+  P <- do.call(rbind, lapply(joint, function(row) as.numeric(unlist(row))))
+  w <- pwr::ES.w2(P)
+  df <- (nrow(P) - 1) * (ncol(P) - 1)
+  answer <- pwr::pwr.chisq.test(w = w, df = df, sig.level = scenario$decision_rule$alpha, power = scenario$target_power)
+  n <- ceiling(answer$N)
+  result <- list(package = "pwr", package_version = as.character(utils::packageVersion("pwr")), assumptions = list("Pearson chi-square test of independence", "noncentral chi-square approximation", "no minimum expected cell count enforced"), result = list(n_total = n, power = answer$power, cohens_w = w, df = df, method = "pwr.chisq.test"))
 } else stop(sprintf("Unsupported model: %s", scenario$model))
 jsonlite::write_json(result, args[[2]], auto_unbox = TRUE, pretty = TRUE)

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "powerbench"
-version = "0.8.0"
+version = "0.8.1"
 description = "Assumption-aware statistical power analysis with independent verification"
 readme = "README.md"
 requires-python = ">=3.11"
