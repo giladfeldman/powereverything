@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "powerbench"
-version = "0.8.1"
+version = "0.8.2"
 description = "Assumption-aware statistical power analysis with independent verification"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -36,9 +36,9 @@ dev = ["pytest>=8"]
 
 [project.urls]
 Homepage = "https://powerrmate.vercel.app"
-Repository = "https://github.com/giladfeldman/powerbench"
-Issues = "https://github.com/giladfeldman/powerbench/issues"
-Changelog = "https://github.com/giladfeldman/powerbench/blob/main/CHANGELOG.md"
+Repository = "https://github.com/giladfeldman/powereverything"
+Issues = "https://github.com/giladfeldman/powereverything/issues"
+Changelog = "https://github.com/giladfeldman/powereverything/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["powerbench"]

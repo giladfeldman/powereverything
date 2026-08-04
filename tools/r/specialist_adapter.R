@@ -116,6 +116,64 @@ if (scenario$model == "tost_equivalence") {
       method = "metafor::rma(test='knha') Monte Carlo"
     )
   )
+} else if (scenario$model == "meta_analysis_fixed") {
+  if (!requireNamespace("metafor", quietly = TRUE)) stop("meta_analysis_fixed requires metafor")
+  studies <- scenario$design$studies
+  d <- scenario$effect$cohens_d
+
+  # Monte Carlo over metafor's equal-effects model (method = "EE", the fixed-effect
+  # summary): every study shares the same true SMD, matching PowerBench's declared
+  # contract. The per-study variance uses the same 2/n + yi^2/(4n) form as the
+  # random-effects branch above.
+  set.seed(20260803)
+  reps <- 400
+  simulate_power <- function(n_per_group) {
+    hits <- 0
+    for (i in seq_len(reps)) {
+      yi <- numeric(studies); vi <- numeric(studies)
+      for (j in seq_len(studies)) {
+        control <- rnorm(n_per_group, 0, 1)
+        treated <- rnorm(n_per_group, d, 1)
+        pooled <- sqrt(((n_per_group - 1) * var(control) + (n_per_group - 1) * var(treated)) /
+                         (2 * n_per_group - 2))
+        yi[j] <- (mean(treated) - mean(control)) / pooled
+        vi[j] <- 2 / n_per_group + yi[j]^2 / (4 * n_per_group)
+      }
+      fit <- try(metafor::rma(yi = yi, vi = vi, method = "EE"), silent = TRUE)
+      if (inherits(fit, "try-error")) next
+      if (fit$pval < alpha) hits <- hits + 1
+    }
+    hits / reps
+  }
+
+  # Equal-effects fits are fast, so the bisection runs to a tighter resolution than the
+  # random-effects branch: +/- 2 per group rather than +/- 8.
+  low <- 4; high <- 16
+  while (simulate_power(high) < target_power) {
+    low <- high; high <- high * 2
+    if (high > 4096) stop("Target power unreachable within the search range")
+  }
+  while (high - low > 2) {
+    mid <- floor((low + high) / 2)
+    if (simulate_power(mid) < target_power) low <- mid else high <- mid
+  }
+  per_group <- high
+  result <- list(
+    package = "metafor",
+    package_version = as.character(utils::packageVersion("metafor")),
+    assumptions = list(
+      "equal-effects (fixed-effect) inverse-variance summary",
+      "common true SMD across studies",
+      "balanced two-arm studies",
+      paste0("Monte Carlo power over ", reps, " replications; resolution is +/- 2 per group")
+    ),
+    result = list(
+      n_per_group_per_study = per_group,
+      n_total = per_group * 2 * studies,
+      power = target_power,
+      method = "metafor::rma(method='EE') Monte Carlo"
+    )
+  )
 } else if (scenario$model == "ordinal_regression") {
   if (!requireNamespace("MASS", quietly = TRUE)) stop("ordinal_regression requires MASS")
   odds_ratio <- scenario$effect$odds_ratio

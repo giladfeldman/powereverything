@@ -68,6 +68,15 @@ _PWR_PARAMETERIZATIONS: dict[str, Parameterization] = {
         rounding_rule="ceiling to the smallest integer meeting target power",
         tails_support="two.sided|greater|less",
     ),
+    "moderation": Parameterization(
+        effect_definition="Cohen's f-squared for the interaction increment",
+        test_variant="noncentral F, one tested predictor, fixed predictors",
+        df_convention="1 and N - total predictors - 1",
+        rounding_rule="ceiling to the smallest integer meeting target power",
+        predictor_distribution="fixed (conditioned on the design matrix)",
+        tails_support="two.sided",
+        notes="pwr.f2.test with u = 1; N reconstructed as v + total_predictors + 1.",
+    ),
     "one_sample_proportion": Parameterization(
         effect_definition="Cohen's arcsine h, 2*asin(sqrt(p1)) - 2*asin(sqrt(p0))",
         test_variant="normal approximation on the arcsine scale",
@@ -153,6 +162,7 @@ class RPwrAdapter(Adapter):
             "two_sample_t", "paired_t", "chi_square_gof", "one_way_anova",
             "linear_regression", "incremental_regression", "correlation",
             "one_sample_proportion", "two_sample_proportion", "chi_square_independence",
+            "moderation",
         }:
             return False
         if scenario.goal != "required_sample_size":
@@ -171,7 +181,7 @@ class RPwrAdapter(Adapter):
 
     def run(self, scenario: Scenario) -> dict:
         if not self.supports(scenario):
-            return {"status": "unsupported", "reason": "pwr adapter supports two-sided required-sample-size scenarios for t, correlation, one-way ANOVA, regression, proportion, and chi-square designs, with balanced allocation where the pwr entry point is balanced-only"}
+            return {"status": "unsupported", "reason": "pwr adapter supports two-sided required-sample-size scenarios for t, correlation, one-way ANOVA, regression (including the moderation increment), proportion, and chi-square designs, with balanced allocation where the pwr entry point is balanced-only"}
         with tempfile.TemporaryDirectory() as tmp:
             source, output = Path(tmp) / "scenario.json", Path(tmp) / "result.json"
             source.write_text(json.dumps(scenario.to_dict()), encoding="utf-8")

@@ -68,5 +68,11 @@ if (scenario$model == "two_sample_t") {
   answer <- pwr::pwr.chisq.test(w = w, df = df, sig.level = scenario$decision_rule$alpha, power = scenario$target_power)
   n <- ceiling(answer$N)
   result <- list(package = "pwr", package_version = as.character(utils::packageVersion("pwr")), assumptions = list("Pearson chi-square test of independence", "noncentral chi-square approximation", "no minimum expected cell count enforced"), result = list(n_total = n, power = answer$power, cohens_w = w, df = df, method = "pwr.chisq.test"))
+} else if (scenario$model == "moderation") {
+  # The interaction increment is a one-df block test, so it is pwr.f2.test with u = 1.
+  # N = v + total_predictors + 1, the same reconstruction the incremental branch uses.
+  answer <- pwr::pwr.f2.test(u = 1, f2 = scenario$effect$cohens_f2, sig.level = scenario$decision_rule$alpha, power = scenario$target_power)
+  n <- ceiling(scenario$design$total_predictors + answer$v + 1)
+  result <- list(package = "pwr", package_version = as.character(utils::packageVersion("pwr")), assumptions = list("interaction increment as a one-df block", "Cohen f2", "noncentral F"), result = list(n_total = n, power = answer$power, method = "pwr.f2.test interaction increment"))
 } else stop(sprintf("Unsupported model: %s", scenario$model))
 jsonlite::write_json(result, args[[2]], auto_unbox = TRUE, pretty = TRUE)

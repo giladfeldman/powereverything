@@ -10,6 +10,58 @@ version and only when a method's answers change. See
 
 ---
 
+## 0.8.2 — 2026-08-04
+
+**No computed answer changes.** No method version is bumped: `references.py`,
+`specialist_extras.py` and `simulation.py` are untouched. This release widens external
+comparison coverage from 15 to 26 of 28 scenarios and adds four adapters.
+
+### New adapters
+
+- **`r.gsdesign`** (gsDesign 3.9.0) — group-sequential t designs (Lan-DeMets
+  O'Brien-Fleming spending over `nNormal`) and the two-arm log-rank via the Schoenfeld
+  `nEvents` formula.
+- **`r.rpact`** (rpact 4.4.0) — group-sequential t designs via `getDesignGroupSequential
+  (typeOfDesign='asOF')` + `getSampleSizeMeans`.
+- **`r.webpower`** (WebPower 0.9.4) — factorial ANOVA terms (`wp.kanova`) and simple
+  mediation (`wp.mediation`, Sobel).
+- **`r.powersurvepi`** (powerSurvEpi 0.1.5) — Welch unequal-variance t via `ssizeWelchT`.
+
+### Extended adapters
+
+- **`r.pwrss`** now also answers: pooled two-sample t at any allocation ratio, Welch t,
+  one-sided non-inferiority t, one-covariate ANCOVA (converting the covariate-adjusted f²
+  to partial eta-squared — the naive unadjusted call returns 200 instead of 150), and
+  single planned contrasts (`power.t.contrast` with cell means at `w/rms(w)·f`).
+- **`r.pwr`** now also answers the moderation increment (`pwr.f2.test` with u = 1).
+- **`r.specialist`** now also answers fixed-effect meta-analysis
+  (`metafor::rma(method='EE')` Monte Carlo, resolution ± 2 per group).
+
+### Numbers (external tool vs PowerBench)
+
+Exact agreement: unbalanced t 490 = 490; Welch t 290 = 290 twice (pwrss and
+powerSurvEpi); ANCOVA 150 = 150; planned contrast 129 = 129; moderation 397 = 397;
+factorial interaction 128 = 128; log-rank 319 = 319; group-sequential (rpact) 200 = 200;
+fixed-effect meta 360 = 360. Declared differences: mediation 183 (Sobel) vs 119 (joint
+significance); group-sequential (gsDesign) 198 vs 200 (asymptotic-normal vs exact-t fixed
+base); non-inferiority 100 vs 102 (noncentrality under the null margin vs shifted
+alternative, 1.96%). Only the two Bayesian designs (JZS Bayes factor, ROPE) remain without
+an external tool — no CRAN analytic package answers them.
+
+### Fixed
+
+- The specialist adapter's Monte Carlo meta-analysis branches test metafor's two-sided
+  p-value but previously accepted one-sided scenarios, and the random-effects declaration
+  claimed one-sided support — a wrong-question comparison waiting to happen. Both branches
+  now decline non-two-sided designs. No committed scenario was affected.
+- `pyproject.toml` project URLs pointed at `giladfeldman/powerbench`, which does not
+  exist; they now point at this repository.
+
+### Added
+
+- `.github/workflows/publish.yml` — PyPI Trusted Publishing (OIDC) on `v*` tags, with a
+  tag-matches-version guard and the fast suite as a pre-publish gate.
+
 ## 0.8.1 — 2026-08-04
 
 **No computed answer changes.** No method version is bumped: `references.py`,

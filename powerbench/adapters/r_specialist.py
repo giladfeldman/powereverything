@@ -1,9 +1,9 @@
 """R adapters for specialist methods: TOSTER, metafor, MASS::polr.
 
-These cover equivalence, random-effects meta-analysis and ordinal regression -- methods
-`pwr` and `pwrss` cannot reach, and three of the paths where PowerBench's own formulas were
-wrong before 2026-08-03. An independent second opinion is most valuable exactly where the
-internal implementation was weakest.
+These cover equivalence, fixed- and random-effects meta-analysis and ordinal regression --
+methods `pwr` and `pwrss` cannot reach, and three of the paths where PowerBench's own
+formulas were wrong before 2026-08-03. An independent second opinion is most valuable
+exactly where the internal implementation was weakest.
 
 Two of the three branches are Monte Carlo rather than closed form, because `metafor` and
 `MASS` are model fitters rather than power calculators. That is a strength for adjudication
@@ -29,7 +29,7 @@ from ..schema import Scenario
 #: candidate sample size.
 _TIMEOUT_SECONDS = 900
 
-_SUPPORTED = {"tost_equivalence", "meta_analysis_random", "ordinal_regression"}
+_SUPPORTED = {"tost_equivalence", "meta_analysis_random", "meta_analysis_fixed", "ordinal_regression"}
 
 _SPECIALIST_PARAMETERIZATIONS: dict[str, Parameterization] = {
     "tost_equivalence": Parameterization(
@@ -47,10 +47,27 @@ _SPECIALIST_PARAMETERIZATIONS: dict[str, Parameterization] = {
         df_convention="k - 1",
         rounding_rule="ceiling per group per study, Monte Carlo resolution +/- 8",
         allocation_support="balanced within study",
-        tails_support="two.sided|greater|less",
+        # tails_support undeclared: the Monte Carlo tests metafor's p-value, which is
+        # two-sided. The earlier "two.sided|greater|less" declaration overclaimed; a
+        # one-sided scenario would have been compared against a two-sided answer with the
+        # tails declared equal. supports() now declines non-two.sided scenarios.
         notes=(
             "metafor::rma(test='knha') Monte Carlo with tau2 fixed at the declared value. "
-            "metafor is the reference implementation of the Hartung-Knapp adjustment."
+            "metafor is the reference implementation of the Hartung-Knapp adjustment. "
+            "Two-sided designs only in this branch."
+        ),
+    ),
+    "meta_analysis_fixed": Parameterization(
+        effect_definition="common standardized mean difference across studies",
+        test_variant="inverse-variance fixed-effect summary, normal reference",
+        df_convention="asymptotic normal",
+        rounding_rule="ceiling per group per study, Monte Carlo resolution +/- 2",
+        allocation_support="balanced within study",
+        # tails_support undeclared: the Monte Carlo branch tests two-sided only.
+        notes=(
+            "metafor::rma(method='EE') Monte Carlo: every study shares the same true SMD, "
+            "fit by the reference implementation of the inverse-variance summary. "
+            "Two-sided designs only in this branch."
         ),
     ),
     "ordinal_regression": Parameterization(
@@ -73,6 +90,7 @@ _SPECIALIST_PARAMETERIZATIONS: dict[str, Parameterization] = {
 #: uses the tool's own stated precision rather than a single global number.
 MONTE_CARLO_TOLERANCE: dict[str, float] = {
     "meta_analysis_random": 0.10,
+    "meta_analysis_fixed": 0.10,
     "ordinal_regression": 0.06,
 }
 
@@ -102,6 +120,11 @@ class RSpecialistAdapter(Adapter):
             # Asymmetric bounds are a different design; decline rather than approximate.
             if abs(lower + upper) > 1e-9:
                 return False
+        if scenario.model in {"meta_analysis_random", "meta_analysis_fixed"}:
+            # The Monte Carlo branches test metafor's p-value, which is two-sided; a
+            # one-sided scenario would be a wrong-question comparison.
+            if scenario.decision_rule.alternative != "two.sided":
+                return False
         if scenario.model == "meta_analysis_random":
             return int(scenario.design.get("studies", 0)) > 2
         return True
@@ -112,8 +135,9 @@ class RSpecialistAdapter(Adapter):
                 "status": "unsupported",
                 "adapter": self.id,
                 "reason": (
-                    "specialist adapter covers symmetric TOST equivalence, random-effects "
-                    "meta-analysis with more than two studies, and ordinal proportional odds"
+                    "specialist adapter covers symmetric TOST equivalence, fixed-effect "
+                    "meta-analysis, random-effects meta-analysis with more than two "
+                    "studies, and ordinal proportional odds"
                 ),
             }
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,4 +1,11 @@
-from .adapters import RPwrAdapter, RPwrssAdapter
+from .adapters import (
+    RGsDesignAdapter,
+    RPowerSurvEpiAdapter,
+    RPwrAdapter,
+    RPwrssAdapter,
+    RRpactAdapter,
+    RWebPowerAdapter,
+)
 
 
 def automated_adapters():
@@ -8,5 +15,16 @@ def automated_adapters():
     be attributed to a difference of question rather than reported as a defect. An adapter
     that declares nothing can never explain away a gap -- see
     `powerbench/parameterization.py`.
+
+    The Monte Carlo specialist adapter (`r.specialist`) is appended by the matrix refresh
+    script rather than listed here, because it is minutes-slow and must remain excludable
+    by `--skip-slow`.
     """
-    return [RPwrAdapter(), RPwrssAdapter()]
+    return [
+        RPwrAdapter(),
+        RPwrssAdapter(),
+        RGsDesignAdapter(),
+        RRpactAdapter(),
+        RWebPowerAdapter(),
+        RPowerSurvEpiAdapter(),
+    ]
