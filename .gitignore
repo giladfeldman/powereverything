@@ -7,3 +7,6 @@ build/
 *.egg-info/
 venv/
 .venv/
+
+# Internal work-tracking. Public repo: keep it out.
+TODO.md

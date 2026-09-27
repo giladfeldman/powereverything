@@ -382,8 +382,8 @@ def _meta_random_se(studies: int, n_per_group: int, cohens_d: float, tau: float)
 def _meta_hk_critical(studies: int, alpha: float, alternative: str) -> tuple[float, bool]:
     """Hartung-Knapp t critical with df = studies - 1 when studies > 2; otherwise z.
 
-    Hartung & Knapp (2001), Statistics in Medicine 20(24), 3875-3889; IntHout, Ioannidis &
-    Borm (2014), BMC Medical Research Methodology 14:25. The standard HK reference
+    Hartung & Knapp (2001), Statistics in Medicine 20(12), 1771-1782 (doi:10.1002/sim.791);
+    IntHout, Ioannidis & Borm (2014), BMC Medical Research Methodology 14:25. The standard HK reference
     distribution is t with k - 1 degrees of freedom. An earlier implementation used k - 2,
     which is not the published convention and made the test slightly conservative.
     """

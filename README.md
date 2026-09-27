@@ -120,6 +120,43 @@ Coverage is not the same as verification. See
 [Verification status](#verification-status) below for which designs have been checked
 against what.
 
+Each design has a stable `method_id`, used with `powerbench.all_methods()`,
+`powerbench.method_version(method_id)` and `powerbench.method_fingerprint(method_id)`:
+
+| Family | `method_id`s |
+|---|---|
+| t tests | `two_sample_t`, `welch_t`, `paired_t` |
+| Proportions | `one_sample_proportion`, `two_sample_proportion` |
+| Chi-square | `chi_square_gof`, `chi_square_independence` |
+| ANOVA | `one_way_anova`, `factorial_anova`, `ancova`, `planned_contrast` |
+| Regression | `linear_regression`, `incremental_regression`, `moderation`, `logistic_regression`, `poisson_regression`, `ordinal_regression` |
+| Association | `correlation` |
+| Mediation | `mediation_indirect` |
+| Equivalence | `tost_equivalence`, `noninferiority_t`, `rope_equivalence_t` |
+| Meta-analysis | `meta_analysis_fixed`, `meta_analysis_random` |
+| Sequential | `group_sequential_t` |
+| Survival | `logrank_two_arm` |
+| Bayesian | `bayes_factor_t` |
+
+## API surface
+
+The public API (`powerbench.__all__`) is small and deliberately so — most work happens through
+`powerbench.schema`, `powerbench.references` and `powerbench.simulation` directly, as in the
+quick start above:
+
+| Export | What it is |
+|---|---|
+| `Scenario` | The study-design dataclass every reference/simulation/adapter call takes |
+| `load_scenario(path)` | Load and validate a `Scenario` from a JSON file |
+| `all_methods()` | `{method_id: current_version}` for every registered design |
+| `method_version(method_id)` | The current version string for one method |
+| `method_fingerprint(method_id)` | `"{method_id}@{version}"`, the string to bind cache keys to |
+| `changes_since(method_id, version)` | `MethodChange` entries for every version bump after `version` |
+| `MethodChange` | One dated, numerically-described correction to a method's formula |
+| `METHOD_CHANGELOG` | The full, append-only history of `MethodChange` entries across all methods |
+| `METHOD_VERSION` / `METHOD_VERSIONS` | The current version constant/mapping backing `method_version` |
+| `__version__` | The installed package release, e.g. `"0.8.2"` |
+
 ---
 
 ## Verification status
@@ -190,6 +227,45 @@ coincidental agreement into "compatible".
 `needs_review` for a human, because asserting that a named third-party tool is wrong is a
 claim a person should make after looking. An undeclared field is treated as unknown, so a
 silent adapter can never explain away a gap it never accounted for.
+
+---
+
+## Statistical basis
+
+Every closed-form and simulation-adjacent method is traced to a primary source in
+[`data/citation_registry.csv`](data/citation_registry.csv) — never a hand-kept bibliography, so a
+citation cannot silently drift from the formula it documents. `citation_id` in the table below
+matches the registry row; `scope` is the registry's own `scope` column, which
+[`scripts/verify_citations.py`](scripts/verify_citations.py) uses to check every DOI against
+Crossref (title and year cross-checked, mismatches printed rather than assumed):
+
+```bash
+python scripts/verify_citations.py --strict
+```
+
+| Design family | Primary source | DOI |
+|---|---|---|
+| Welch unequal-variance t | Welch (1947), *Biometrika* 34(1-2) | [10.1093/biomet/34.1-2.28](https://doi.org/10.1093/biomet/34.1-2.28) |
+| — degrees-of-freedom approximation | Satterthwaite (1946), *Biometrics Bulletin* 2(6) | [10.2307/3002019](https://doi.org/10.2307/3002019) |
+| Chi-square goodness-of-fit / independence | Pearson (1900), *Philosophical Magazine* Series 5, 50(302) | [10.1080/14786440009463897](https://doi.org/10.1080/14786440009463897) |
+| Ordinal (proportional-odds) regression | Whitehead (1993), *Statistics in Medicine* 12(24) | [10.1002/sim.4780122404](https://doi.org/10.1002/sim.4780122404) |
+| Logistic regression, binary predictor | Demidenko (2007), *Statistics in Medicine* 26(18) | [10.1002/sim.2771](https://doi.org/10.1002/sim.2771) |
+| Logistic / linear regression, continuous predictor | Hsieh, Bloch & Larsen (1998), *Statistics in Medicine* 17(14) | [10.1002/(SICI)1097-0258(19980730)17:14<1623::AID-SIM871>3.0.CO;2-S](https://doi.org/10.1002/%28SICI%291097-0258%2819980730%2917:14%3C1623::AID-SIM871%3E3.0.CO;2-S) |
+| Random-effects meta-analysis (Hartung–Knapp) | Hartung & Knapp (2001), *Statistics in Medicine* 20(12) | [10.1002/sim.791](https://doi.org/10.1002/sim.791) |
+| — HK-adjustment performance | IntHout, Ioannidis & Borm (2014), *BMC Medical Research Methodology* 14:25 | [10.1186/1471-2288-14-25](https://doi.org/10.1186/1471-2288-14-25) |
+| Group-sequential t (Lan–DeMets O'Brien–Fleming) | Lan & DeMets (1983), *Biometrika* 70(3) | [10.1093/biomet/70.3.659](https://doi.org/10.1093/biomet/70.3.659) |
+| Survival, two-arm log-rank | Schoenfeld (1983), *Biometrics* 39(2) | [10.2307/2531021](https://doi.org/10.2307/2531021) |
+| Bayesian JZS Bayes-factor design | Rouder, Speckman, Sun, Morey & Iverson (2009), *Psychonomic Bulletin & Review* 16(2) | [10.3758/PBR.16.2.225](https://doi.org/10.3758/PBR.16.2.225) |
+| Mediation, joint-significance test | MacKinnon, Lockwood, Hoffman, West & Sheets (2002), *Psychological Methods* 7(1) | [10.1037/1082-989X.7.1.83](https://doi.org/10.1037/1082-989X.7.1.83) |
+| Equivalence (TOST) | Schuirmann (1987), *J. Pharmacokinetics and Biopharmaceutics* 15(6) | [10.1007/BF01068419](https://doi.org/10.1007/BF01068419) |
+| Effect-size conventions (small/medium/large) | Cohen (1988; 2013 reissue), *Statistical Power Analysis for the Behavioral Sciences* | [10.4324/9780203771587](https://doi.org/10.4324/9780203771587) |
+
+The remaining designs (pooled two-sample and paired t, one/two-proportion, one-way/factorial
+ANOVA, planned contrast, ANCOVA, Pearson correlation, Poisson regression, non-inferiority) are
+standard noncentral-distribution derivations with no single disputed source; see the docstring of
+each `required_n_*` function in [`powerbench/references.py`](powerbench/references.py) for its exact
+formula, and [`powerbench/parameterization.py`](powerbench/parameterization.py) for the declared
+effect definition, predictor distribution, and DF convention each adapter assumes.
 
 ---
 
@@ -280,4 +356,4 @@ MIT. See [`LICENSE`](LICENSE).
 
 If PowerBench contributes to published work, please cite the repository and record the
 method version you used (`powerbench.method_fingerprint(...)`), so the calculation can be
-reproduced exactly.
+reproduced exactly. Citable metadata: [`CITATION.cff`](CITATION.cff).

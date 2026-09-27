@@ -10,6 +10,20 @@ version and only when a method's answers change. See
 
 ---
 
+## Unreleased
+
+**No computed answer changes.** Documentation only.
+
+- README gained a "Statistical basis" table citing the primary literature (by DOI, verified
+  against Crossref) behind every design with a disputed or non-obvious source, a "Method ids"
+  table for every `all_methods()` entry, and an "API surface" table for every `powerbench.__all__`
+  export.
+- Added `scripts/check_docs_coverage.py`, a documentation-drift gate that derives the required
+  surface from `powerbench.__all__`, `powerbench.all_methods()`, and every `primary_literature`
+  row of `data/citation_registry.csv`, and fails if README.md is missing any of them — pinned
+  two-sided by `tests/test_docs_coverage_gate.py`.
+- Added `CITATION.cff`.
+
 ## 0.8.2 — 2026-08-04
 
 **No computed answer changes.** No method version is bumped: `references.py`,
