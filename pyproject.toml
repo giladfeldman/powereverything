@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "scipy>=1.11",
+    "scipy>=1.15",
     # numpy is imported directly by simulation.py and specialist_extras.py, so it is
     # declared rather than relied on as a scipy transitive dependency.
     "numpy>=1.26",

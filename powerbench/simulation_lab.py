@@ -363,8 +363,23 @@ def _run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = 
     by_effect = max(row["power"] for row in grid if row["noise_multiplier"] == 1 and row["power"] is not None) - min(row["power"] for row in grid if row["noise_multiplier"] == 1 and row["power"] is not None)
     by_noise = max(row["power"] for row in grid if row["effect_multiplier"] == 1 and row["power"] is not None) - min(row["power"] for row in grid if row["effect_multiplier"] == 1 and row["power"] is not None)
     driver = "effect size" if by_effect >= by_noise else sensitivity_key.replace("_", " ")
+    # The all-zero global null is not the least-favourable composite mediation null.
+    paths = {"mediation_simple": ("a_path", "b_path"), "sem_two_mediators": ("a1", "a2", "b")}.get(template_id, ())
+    boundary_cases = []
+    for index, path in enumerate(paths):
+        null_values = {**values, path: 0.0}
+        null_rng = np.random.default_rng(np.random.SeedSequence([int(values["seed"]), 20261021, index]))
+        rejected = 0
+        for _ in range(reps):
+            pvalue, _rows = run_once(null_rng, null_values, 1.0)
+            if not isfinite(pvalue) or not 0 <= pvalue <= 1:
+                raise ValueError("Composite-null fit failed; no complete calibration was produced")
+            rejected += pvalue < alpha
+        rate = rejected / reps
+        boundary_cases.append({"zero_path": path, "rejection_rate": rate, "mc_ci95": _ci(rate, reps), "replications": reps, "seed_strategy": "SeedSequence(seed,20261021,case_index)", "assumptions": null_values})
+    null_calibration = {"scope": "global_null_and_examined_single_path_nulls" if paths else "declared_global_null_only", "global_null_rejection_rate": type_i_error, "global_null_mc_ci95": _ci(type_i_error, reps), "boundary_cases": boundary_cases, "limitation": "Examined null scenarios do not establish the supremum Type-I error over a composite null or certify calibration."}
     update(98, "Preparing the explanation and results")
-    return {"classification": "simulation_first_exemplar_not_universal_calculator", "template": {"id": template_id, "label": template["label"], "diagram": template["diagram"], "analysis_model": template["analysis_model"], "boundary": template["boundary"]}, "assumptions": values, "preview_dataset": preview, "power": power, "power_mc_ci95": _ci(power, reps), "type_i_error": type_i_error, "type_i_error_mc_ci95": _ci(type_i_error, reps), "replications": reps, "failures": 0, "sensitivity_grid": grid, "largest_observed_sensitivity_driver": driver + " (exploratory finite-grid estimate; Monte Carlo noise may change this ordering)", "mc_interval_method": "Wilson 95%"}
+    return {"classification": "simulation_first_exemplar_not_universal_calculator", "template": {"id": template_id, "label": template["label"], "diagram": template["diagram"], "analysis_model": template["analysis_model"], "boundary": template["boundary"]}, "assumptions": values, "preview_dataset": preview, "power": power, "power_mc_ci95": _ci(power, reps), "null_calibration": null_calibration, "type_i_error": type_i_error, "type_i_error_mc_ci95": _ci(type_i_error, reps), "replications": reps, "failures": 0, "sensitivity_grid": grid, "largest_observed_sensitivity_driver": driver + " (exploratory finite-grid estimate; Monte Carlo noise may change this ordering)", "mc_interval_method": "Wilson 95%"}
 
 
 def normalize_simulation(payload: dict[str, Any]) -> dict[str, Any]:
@@ -403,7 +418,8 @@ def normalize_simulation(payload: dict[str, Any]) -> dict[str, Any]:
     size = values.get("n", values.get("n_per_arm", values.get("participants_per_arm", values.get("n_per_cell", values.get("clusters_per_arm", 1)))))
     size *= values.get("cluster_size", values.get("cluster_size_max", 1)) * values.get("occasions", 1) * 4
     reps = values["replications"]
-    if size * (2 * reps + 9 * min(300, reps)) > 25_000_000:
+    extra_null_cases = {"mediation_simple": 2, "sem_two_mediators": 3}.get(template_id, 0)
+    if size * ((2 + extra_null_cases) * reps + 9 * min(300, reps)) > 25_000_000:
         raise ValueError("Simulation exceeds the per-request generated-row budget; reduce sample size or replications")
     return values
 
@@ -415,7 +431,7 @@ def run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = N
     from .provenance import provenance
     from .reproducibility import python_script
     normalized = {"operation": "simulate", "payload": payload}
-    result.update(schema_version="1.0", simulation_policy_version="1.2", status="complete", operation="simulate", normalized_request=normalized,
-                  provenance=provenance("simulation_lab:" + str(payload.get("template_id")), normalized, "1.2"),
+    result.update(schema_version="1.0", simulation_policy_version="1.3", status="complete", operation="simulate", normalized_request=normalized,
+                  provenance=provenance("simulation_lab:" + str(payload.get("template_id")), normalized, "1.3"),
                   reproduction=[{"language": "python", "kind": "exact_reproduction", "code": python_script(normalized)}])
     return result

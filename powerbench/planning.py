@@ -33,6 +33,9 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
     model = payload.get("model")
     payload = {"target_power": DEFAULT_TARGET_POWER, **payload}
     target_power = _number(payload, "target_power")
+    rate = payload.get("attrition_rate", 0)
+    if isinstance(rate, bool) or not 0 <= float(rate) < 1:
+        raise ValueError("attrition_rate must lie in [0, 1)")
     family_alpha = _number(payload, "alpha")
     multiplicity_method = str(payload.get("multiplicity_method", "none")).lower()
     if multiplicity_method not in {"none", "bonferroni", "hochberg"}:
@@ -456,7 +459,8 @@ def make_plan(payload: dict[str, Any]) -> dict[str, Any]:
     attrition = design.get("attrition_rate", 0)
     recruitment = None
     if attrition:
-        recruitment = int(__import__("math").ceil(reference["n_total"] / (1 - attrition)))
+        from .recruitment import recruitment_counts
+        recruitment = recruitment_counts(reference, attrition)["n_total"]
     reporting = _build_reporting(scenario, reference, recruitment, family_alpha, alpha)
     report = _plan_report(scenario, reference, simulation, tool, recruitment, reporting)
     alignment = _reference_simulation_alignment(reference, simulation)
@@ -474,7 +478,7 @@ def make_plan(payload: dict[str, Any]) -> dict[str, Any]:
         "primary_tests": primary_tests,
         "sensitivity": _sensitivity_curve(scenario, reference),
         "heterogeneity_sensitivity": _heterogeneity_curve(scenario),
-        "sensitivity_policy_version": "1.0", "planning_policy_version": "1.1",
+        "sensitivity_policy_version": "1.0", "planning_policy_version": "1.2",
         "caution": "This is a matched calculation under the displayed assumptions. It is not a declaration that the overall study plan is correct.",
     }
     from .provenance import provenance
@@ -520,6 +524,8 @@ def analyze_fields(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _reference_simulation_alignment(reference: dict[str, Any], simulation: dict[str, Any]) -> dict[str, str]:
+    if simulation.get("failures", 0):
+        return {"status": "fit_failures_unresolved", "message": "Some simulated fits failed. The estimate is conditional on successful fits and cannot establish alignment; inspect convergence before interpreting it."}
     low, high = simulation["mc_ci95"]
     if low <= reference["power"] <= high:
         return {"status": "compatible", "message": "The analytic reference lies within the simulation's Monte Carlo uncertainty interval under the displayed data-generating assumptions."}

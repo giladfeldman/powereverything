@@ -777,7 +777,7 @@ def simulate(s: Scenario, n1: int | None = None, n2: int | None = None, n_total:
         raise NotImplementedError(f"No simulator for {s.model}")
     completed, power = simulations - failed, rejected / max(simulations - failed, 1)
     se, low, high = _ci95(power, max(completed, 1))
-    result = {"replications_requested": simulations, "replications_completed": completed, "seed": seed, "power": power, "mc_standard_error": se, "mc_ci95": [low, high], "failures": failed, "engine": "independent_numpy_scipy_simulation"}
+    result = {"replications_requested": simulations, "replications_completed": completed, "seed": seed, "power": power, "mc_standard_error": se, "mc_ci95": [low, high], "failures": failed, "engine": "independent_numpy_scipy_simulation", "mc_interval_method": "Wilson 95%", "mc_standard_error_definition": "Plug-in binomial standard error; can be zero at boundaries. Use the Wilson interval for uncertainty.", "estimate_conditioned_on_successful_fits": bool(failed)}
     if s.model == "bayes_factor_t":
         logs = np.log(np.asarray(bf_values)) if bf_values else np.asarray([])
         result["bayes_diagnostics"] = {

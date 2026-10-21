@@ -58,7 +58,7 @@ METHOD_VERSIONS: dict[str, str] = {
     "noninferiority_t": "1.0.0",
     "ordinal_regression": "2.0.0",
     "bayes_factor_t": "1.0.0",
-    "group_sequential_t": "2.1.0",
+    "group_sequential_t": "2.2.0",
     "logrank_two_arm": "1.1.0",
     "rope_equivalence_t": "1.0.0",
 }
@@ -78,6 +78,11 @@ class MethodChange:
 #: Newest first. `numeric_impact` must state what moved and by how much -- "improved
 #: accuracy" is not enough for someone deciding whether to re-check their study plan.
 METHOD_CHANGELOG: tuple[MethodChange, ...] = (
+    MethodChange(
+        method_id="group_sequential_t", version="2.2.0", date="2026-10-21",
+        summary="Seed normal-QMC integration and request explicit tolerances; reject boundary-calibration failures instead of silently substituting unconditional boundaries.",
+        numeric_impact="Previously repeated three-look power evaluations could differ because the integration RNG was unseeded. The same request now uses a fixed integration seed (20261021). The representative balanced two-look d=.4 alpha=.05 target=.80 design remains N=198; designs near numerical integration thresholds may change. QMC tolerances are requested, not certified error bounds.",
+    ),
     MethodChange(
         method_id="group_sequential_t", version="2.1.0", date="2026-10-21",
         summary="Search the sequential normal-model operating characteristic from its valid minimum, removing an unrelated exact-t fixed-design floor.",

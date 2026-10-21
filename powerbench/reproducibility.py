@@ -101,6 +101,14 @@ def export_bundle(result: dict) -> bytes:
     if stored.get("method_id") in METHOD_VERSIONS and stored.get("method_version") != METHOD_VERSIONS[stored["method_id"]]:
         raise ValueError("Historical method version requires its original implementation for bundle export")
     request = result.get("normalized_request", result.get("scenario", {}))
+    if not stored.get("method_id") or not stored.get("method_version"):
+        raise ValueError("Complete method provenance is required")
+    from .api import analyze
+    replay = analyze(request)
+    if replay.get("status") != "complete" or replay.get("provenance", {}).get("method_id") != stored["method_id"] or replay.get("provenance", {}).get("method_version") != stored["method_version"]:
+        raise ValueError("Stored method provenance does not match this implementation")
+    if replay.get("result") != result.get("result"):
+        raise ValueError("Stored result does not match its scientific reproduction")
     entries = {
         "README.md": "# Reproduce this analysis\n\nCreate a fresh Python environment, install requirements.lock.txt, then run reproduce.py. R, when supplied, is an independent implementation under the stated assumptions. Numerical agreement does not certify the design.\n",
         "request.json": json.dumps(request, indent=2, allow_nan=False),

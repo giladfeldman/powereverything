@@ -11,7 +11,7 @@ from .contracts import normalize
 from .provenance import input_hash
 from .reproducibility import reproduction
 
-_EFFECT = {"baseline_category_probs", "p_baseline", "p_event", "cohens_d", "cohens_dz", "rho", "cohens_f", "cohens_f2", "mean_difference", "sd_group1", "sd_group2", "p_null", "p_alternative", "p_group1", "p_group2", "joint_probabilities", "odds_ratio", "rate_ratio", "hazard_ratio", "true_difference", "sd", "lower_bound", "upper_bound", "a_path", "b_path"}
+_EFFECT = {"margin", "baseline_category_probs", "p_baseline", "p_event", "cohens_d", "cohens_dz", "rho", "cohens_f", "cohens_f2", "mean_difference", "sd_group1", "sd_group2", "p_null", "p_alternative", "p_group1", "p_group2", "joint_probabilities", "odds_ratio", "rate_ratio", "hazard_ratio", "true_difference", "sd", "lower_bound", "upper_bound", "a_path", "b_path"}
 _DESIGN = {"family_alpha", "primary_tests", "allocation_ratio", "equal_variance", "attrition_rate", "groups", "predictors", "total_predictors", "tested_predictors", "categories", "rows", "cols", "min_expected_count", "levels_a", "levels_b", "covariate_r2", "contrast_weights", "studies", "tau", "hartung_knapp", "looks", "bf_threshold", "r_scale", "prior_sd", "rope_threshold", "p_event", "control_hazard", "accrual_years", "followup_years", "dropout_hazard", "baseline_rate", "exposure", "baseline_probability", "predictor_r2", "x_variance", "x_probability", "x_mean", "x_sd", "residual_sd", "residual_sd_y", "residual_sd_m"}
 
 
@@ -33,7 +33,7 @@ def anonymous_snapshot(result: dict) -> dict:
                 "design": {k: _numeric(v) for k, v in source.get("design", {}).items() if k in _DESIGN},
                 "decision_rule": source.get("decision_rule", {}), "assumptions": [], "simulation": {}, "status": "draft"}
     # A small set of categorical scientific values is enumerated explicitly.
-    for key, choices in {"tested_term": {"A", "B", "AB"}, "bf_method": {"jzs", "bic"}, "predictor_distribution": {"binary", "normal"}}.items():
+    for key, choices in {"predictor_type": {"binary", "continuous"}, "tested_term": {"A", "B", "AB"}, "bf_method": {"jzs", "bic"}, "predictor_distribution": {"binary", "normal"}}.items():
         value = source.get("design", {}).get(key)
         if value in choices:
             scenario["design"][key] = value
@@ -72,4 +72,4 @@ def anonymous_snapshot(result: dict) -> dict:
             script["code"] = script["code"].replace(f"powerbench=={__version__}", f"powerbench=={version}")
     return {"schema_version": "1.0", "anonymization_version": "1.0", "status": "complete", "operation": normalized["operation"], "normalized_request": normalized, "result": values,
             "warnings": ["Identity metadata and source documents are excluded. Scientific details may still reveal identity; review this exact snapshot before sharing."],
-            "provenance": {"engine_version": version, "method_id": scenario["model"], "method_version": provenance.get("method_version"), "input_sha256": input_hash(normalized)}, "reproduction": scripts}
+            "provenance": {"engine_version": version, "method_id": scenario["model"], "method_version": provenance.get("method_version"), "input_sha256": input_hash(normalized)}, "reproduction": scripts, "reporting": replay.get("reporting", {}), "citations": replay.get("citations", [])}

@@ -296,12 +296,12 @@ def group_sequential_boundaries(looks: int, alpha: float, alternative: str = "tw
             block = covariance[: index + 1, : index + 1]
             # P(|Z_j| < b_j for j < index) minus P(|Z_j| < b_j for j <= index)
             continue_before = float(
-                multivariate_normal.cdf(
+                _sequential_cdf(
                     np.array(upper), mean=np.zeros(index), cov=block[:index, :index], lower_limit=np.array(lower)
                 )
             )
             continue_through = float(
-                multivariate_normal.cdf(
+                _sequential_cdf(
                     np.array(upper + [bound]),
                     mean=np.zeros(index + 1),
                     cov=block,
@@ -312,12 +312,18 @@ def group_sequential_boundaries(looks: int, alpha: float, alternative: str = "tw
 
         try:
             bound = float(brentq(lambda b, spent_increment=increment: exit_probability(b) - spent_increment, 0.5, 12.0, xtol=1e-6, maxiter=100))
-        except ValueError:
-            bound = float(norm.ppf(1 - increment / 2))
+        except ValueError as error:
+            raise ValueError("Could not calibrate sequential boundaries; no fallback design was substituted") from error
         boundaries.append(bound)
         spent = target_cumulative
     _BOUNDARY_CACHE[cache_key] = list(boundaries)
     return boundaries
+
+
+def _sequential_cdf(*args, **kwargs):
+    """Repeatable QMC integration; requested tolerances are not error guarantees."""
+    check_search_budget()
+    return multivariate_normal.cdf(*args, **kwargs, rng=np.random.default_rng(20261021), maxpts=1_000_000, abseps=1e-8, releps=1e-8)
 
 
 def group_sequential_power(n_per_arm_final: int, cohens_d: float, looks: int, alpha: float, alternative: str) -> float:
@@ -343,7 +349,7 @@ def group_sequential_power(n_per_arm_final: int, cohens_d: float, looks: int, al
         lower = np.array([-b for b in boundaries])
         upper = np.full(looks, np.inf)
 
-    continue_all = float(multivariate_normal.cdf(upper, mean=means, cov=covariance, lower_limit=lower))
+    continue_all = float(_sequential_cdf(upper, mean=means, cov=covariance, lower_limit=lower))
     return float(min(1.0, max(0.0, 1.0 - continue_all)))
 
 
@@ -358,12 +364,20 @@ def required_n_group_sequential_t(s: Scenario) -> dict[str, float | int | str]:
     # hardcoded factor and then reported `two_sample_t_power` at that N -- the
     # fixed-design power of a single final test, which is not the power of a sequential
     # design and does not account for the interim looks at all.
-    n_per_arm = 2
-    while group_sequential_power(n_per_arm, d, looks, alpha, alternative) < target:
+    low, high = 1, 2
+    while group_sequential_power(high, d, looks, alpha, alternative) < target:
         check_search_budget()
-        n_per_arm += 1
-        if n_per_arm > 1_000_000:
-            raise RuntimeError("Could not bracket group-sequential sample size")
+        low, high = high, high * 2
+        if high > 1_000_000:
+            raise ValueError("Could not bracket group-sequential sample size within its declared limit")
+    while high - low > 1:
+        check_search_budget()
+        middle = (low + high) // 2
+        if group_sequential_power(middle, d, looks, alpha, alternative) >= target:
+            high = middle
+        else:
+            low = middle
+    n_per_arm = high
 
     n1 = n2 = n_per_arm
     boundaries = group_sequential_boundaries(looks, alpha, alternative)
@@ -374,6 +388,8 @@ def required_n_group_sequential_t(s: Scenario) -> dict[str, float | int | str]:
         "power": group_sequential_power(n_per_arm, d, looks, alpha, alternative),
         "fixed_n_total": fixed["n_total"],
         "inflation_factor": float((n1 + n2) / int(fixed["n_total"])),
+        "fixed_comparator_method": "exact_fixed_t_not_matching_sequential_normal_model",
+        "integration": {"method": "seeded_scipy_normal_QMC", "seed": 20261021, "requested_absolute_tolerance": 1e-8, "boundary_tolerance": 1e-6, "limitation": "Requested integration tolerances are not certified error bounds. The fixed-t comparator ratio is not a pure sequential inflation factor."},
         "looks": looks,
         "efficacy_boundaries": [round(b, 6) for b in boundaries],
         "method": "lan_demets_obrien_fleming_sequential",
@@ -488,6 +504,8 @@ def required_n_meta_analysis_random(s: Scenario) -> dict[str, Any]:
         "power": power,
         "hartung_knapp": use_hk,
         "prediction_interval_95": [float(d - pi_half), float(d + pi_half)],
+        "prediction_interval_method": "t_k_minus_2_known_tau_approximation" if studies > 2 else "normal_known_tau_approximation_at_two_studies",
+        "calibration_limit": "tau is treated as known; prediction coverage and estimated-heterogeneity Hartung-Knapp calibration are not certified by this calculation.",
         "method": "random_effects_smd_meta_analysis_hartung_knapp_t",
     }
 
@@ -638,6 +656,9 @@ def required_n_logrank_two_arm(s: Scenario) -> dict[str, Any]:
             float(s.design.get("dropout_hazard", 0.0)),
             ratio,
         )
+        supplied = float(s.effect["p_event"])
+        if abs(p_event - supplied) > 1e-10:
+            raise ValueError("Conflicting event probability: supplied p_event does not match the declared accrual/followup/dropout model")
         p_event_source = "derived_from_accrual_followup_dropout"
     else:
         p_event = float(s.effect["p_event"])

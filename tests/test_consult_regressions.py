@@ -40,6 +40,9 @@ def test_f2_snapshot_rejects_a_forged_numeric_result():
 ])
 def test_f3_impossible_or_invalid_plans_terminate(payload):
     code='''import json,sys
+from powerbench.api import analyze
+from powerbench.review.legacy import check
+print('READY',flush=True)
 q=json.loads(sys.argv[1])
 try:
  if q.get('legacy'):
@@ -52,9 +55,26 @@ try:
   else:raise AssertionError('direction was accepted')
 except AssertionError:raise
 '''
-    try:result=subprocess.run([sys.executable,'-c',code,json.dumps(payload)],capture_output=True,text=True,timeout=3,check=False)
-    except subprocess.TimeoutExpired:pytest.fail('Unbounded planning request did not terminate')
-    assert result.returncode==0,result.stderr
+    import queue
+    import threading
+    # Runtime import/startup is a separate gate; it must not consume the 3s calculation bound.
+    ready = queue.Queue()
+    with subprocess.Popen([sys.executable, '-c', code, json.dumps(payload)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
+        threading.Thread(target=lambda: ready.put(process.stdout.readline()), daemon=True).start()
+        try:
+            initialized = ready.get(timeout=120)
+        except queue.Empty:
+            process.kill(); process.communicate()
+            pytest.fail('Python/SciPy runtime failed to initialize within its startup allowance')
+        if initialized.strip() != 'READY':
+            process.kill(); _, stderr = process.communicate()
+            pytest.fail('Runtime startup failed: ' + stderr)
+        try:
+            _, stderr = process.communicate(timeout=3)
+        except subprocess.TimeoutExpired:
+            process.kill(); process.communicate()
+            pytest.fail('Initialized invalid planning request did not terminate within 3 seconds')
+        assert process.returncode == 0, stderr
 
 
 def test_f5_portable_plan_reports_attrition_recruitment():

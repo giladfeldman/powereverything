@@ -38,7 +38,7 @@ def analyze(request: dict) -> dict:
         result, status = {"reason": str(exc)}, "unsupported"
     envelope = {"schema_version": "1.0", "status": status, "operation": normalized["operation"], "normalized_request": normalized,
                 "result": result, "assumptions": list(scenario.assumptions), "warnings": ["Conditional on the stated design and effect assumptions; this does not certify the study design."],
-                "operation_policy_version": "1.1", "diagnostics": result.get("diagnostics", {}), "provenance": provenance(scenario.model, normalized)}
+                "operation_policy_version": "1.2", "diagnostics": result.get("diagnostics", {}), "provenance": provenance(scenario.model, normalized)}
     from .capabilities import FIXED_MODELS
     scalar = FIXED_MODELS.get(scenario.model)
     if normalized["operation"] == "detectable_effect" and scalar in request.get("scenario", {}).get("effect", {}):
@@ -48,15 +48,17 @@ def analyze(request: dict) -> dict:
     from .resources import method_attribution
     envelope["citations"] = [method_attribution(scenario.model)]
     if status == "complete":
-        from math import ceil
-
         from .planning import _format_target_effect
+        from .recruitment import recruitment_counts
         from .reporting import reporting
         rate = float(scenario.design.get("attrition_rate", 0))
         if not 0 <= rate < 1:
             raise ValueError("attrition_rate must lie in [0, 1)")
         if rate and normalized["operation"] != "plan":
             envelope["warnings"].append("Fixed sample counts are analysable; the declared attrition metadata is not applied to this fixed-sample calculation.")
-        recruitment = ceil(result["n_total"] / (1 - rate)) if rate and normalized["operation"] == "plan" else None
+        recruit_counts = recruitment_counts(result, rate) if normalized["operation"] == "plan" else None
+        recruitment = recruit_counts["n_total"] if rate and recruit_counts else None
+        envelope["recruitment_counts"] = recruit_counts
+        envelope["recruitment_policy_version"] = "1.2"
         envelope["reporting"] = reporting(scenario, result, _format_target_effect(scenario), recruitment, scenario.design.get("family_alpha"))
     return envelope

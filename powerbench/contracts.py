@@ -83,6 +83,8 @@ def normalize(request: dict) -> tuple[dict, Scenario]:
     if target is not None and (isinstance(target, bool) or not isinstance(target, (int, float))):
         raise ValueError("target_power must be a number")
     rule = value["decision_rule"]
+    if rule.get("multiplicity_method", "none") == "none" and value["design"].get("family_alpha") is not None and value["design"].get("primary_tests", 1) != 1:
+        raise ValueError("A declared family with multiple tests requires an explicit multiplicity adjustment; unadjusted alpha does not control family error")
     if rule.get("multiplicity_method", "none") != "none":
         design = value["design"]
         if "family_alpha" not in design or "primary_tests" not in design:

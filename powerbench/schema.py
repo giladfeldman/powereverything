@@ -71,6 +71,17 @@ class Scenario:
     status: Literal["certification", "smoke", "draft"] = "draft"
 
     def validate(self) -> None:
+        rate = self.design.get("attrition_rate", 0)
+        if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 <= rate < 1:
+            raise ValueError("attrition_rate must lie in [0, 1)")
+        if self.model == "two_sample_t" and self.design.get("equal_variance") is False:
+            raise ValueError("The pooled two_sample_t model requires equal_variance=true; use welch_t for unequal variance")
+        if self.model == "meta_analysis_random" and "hartung_knapp" in self.design:
+            declared = self.design["hartung_knapp"]
+            if not isinstance(declared, bool) or declared != (self.design.get("studies", 0) > 2):
+                raise ValueError("hartung_knapp is determined by the supported method: Hartung-Knapp for at least three studies, normal approximation at two studies")
+        if self.model == "logrank_two_arm" and rate and self.design.get("dropout_hazard", 0):
+            raise ValueError("Declare dropout_hazard or additional attrition_rate, not both without a separate validated loss model")
         if not self.id or not self.title:
             raise ValueError("scenario id and title are required")
         self.decision_rule.validate()

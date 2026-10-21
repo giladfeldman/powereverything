@@ -667,9 +667,16 @@ def required_n_meta_analysis_fixed(s: Scenario) -> dict[str, float | int | str]:
 
 def analytic_reference(s: Scenario) -> dict[str, float | int | str]:
     s.validate()
-    scalar = {"two_sample_t": "cohens_d", "paired_t": "cohens_dz", "welch_t": "mean_difference", "correlation": "rho"}.get(s.model)
-    if scalar and s.decision_rule.alternative != "two.sided":
-        effect = float(s.effect[scalar])
+    scalar = {"two_sample_t": "cohens_d", "paired_t": "cohens_dz", "welch_t": "mean_difference", "correlation": "rho", "meta_analysis_fixed": "cohens_d", "meta_analysis_random": "cohens_d", "group_sequential_t": "cohens_d", "logistic_regression": "odds_ratio", "poisson_regression": "rate_ratio", "ordinal_regression": "odds_ratio", "logrank_two_arm": "hazard_ratio"}.get(s.model)
+    difference = None
+    if scalar:
+        difference = float(s.effect[scalar]) - (1 if scalar.endswith("ratio") else 0)
+    elif s.model == "one_sample_proportion":
+        difference = float(s.effect["p_alternative"]) - float(s.effect["p_null"])
+    elif s.model == "two_sample_proportion":
+        difference = float(s.effect["p_group2"]) - float(s.effect["p_group1"])
+    if difference is not None and s.decision_rule.alternative != "two.sided":
+        effect = difference
         if (s.decision_rule.alternative == "greater" and effect <= 0) or (s.decision_rule.alternative == "less" and effect >= 0):
             raise ValueError("Effect direction is incompatible with the one-sided planning alternative")
     if s.model == "group_sequential_t" and float(s.design.get("allocation_ratio", 1)) != 1:
