@@ -22,7 +22,8 @@ from .schema import Scenario
 
 def _ci95(p: float, n: int) -> tuple[float, float, float]:
     se = sqrt(max(p * (1 - p), 0) / n)
-    return se, max(0.0, p - 1.96 * se), min(1.0, p + 1.96 * se)
+    interval = binomtest(round(p * n), n).proportion_ci(method="wilson")
+    return se, float(interval.low), float(interval.high)
 
 
 def _proportional_odds_wald_z(y: np.ndarray, x: np.ndarray, categories: int) -> float | None:
@@ -639,8 +640,8 @@ def simulate(s: Scenario, n1: int | None = None, n2: int | None = None, n_total:
             crossed = False
             valid = True
             for fraction, boundary in zip(info_fractions, boundaries):
-                k1 = max(2, int(round(int(n1) * fraction)))
-                k2 = max(2, int(round(int(n2) * fraction)))
+                k1 = max(2, round(int(n1) * fraction))
+                k2 = max(2, round(int(n2) * fraction))
                 result = ttest_ind(y_full[:k2], x_full[:k1], equal_var=equal_var)
                 if not np.isfinite(result.statistic):
                     valid = False
@@ -668,7 +669,7 @@ def simulate(s: Scenario, n1: int | None = None, n2: int | None = None, n_total:
         dropout_hazard = float(s.design.get("dropout_hazard", 0.0))
         ratio = float(s.design.get("allocation_ratio", 1.0))
         if n1 is None or n2 is None:
-            n1 = max(2, int(round(int(n_total) / (1 + ratio))))
+            n1 = max(2, round(int(n_total) / (1 + ratio)))
             n2 = int(n_total) - int(n1)
         p1 = int(n1) / (int(n1) + int(n2))
 

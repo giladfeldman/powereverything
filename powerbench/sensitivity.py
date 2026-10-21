@@ -31,8 +31,9 @@ def detectable_effect(s: Scenario, sample: dict, domain: dict | None = None) -> 
         raise ValueError("This effect metric is nonnegative")
     if s.decision_rule.alternative != "two.sided" and direction != default_direction:
         raise ValueError("Effect direction conflicts with the one-sided test")
-    lower, upper = float(domain.get("lower", 1e-8)), float(domain.get("upper", .999999 if key == "rho" else 10))
-    if not all(map(isfinite, (lower, upper))) or not 0 < lower < upper or upper > 10000 or (key == "rho" and upper >= 1):
+    scale = max(float(s.effect["sd_group1"]), float(s.effect["sd_group2"])) if s.model == "welch_t" else 1.0
+    lower, upper = float(domain.get("lower", 1e-8 * scale)), float(domain.get("upper", .999999 if key == "rho" else 10 * scale))
+    if not all(map(isfinite, (lower, upper))) or not 0 < lower < upper or upper > 10000 * scale or (key == "rho" and upper >= 1):
         raise ValueError("Specify finite positive magnitude bounds; correlations must remain below 1")
     target = s.target_power
     if target is None or not 0 < target < 1:

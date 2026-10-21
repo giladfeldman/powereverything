@@ -5,13 +5,14 @@ from __future__ import annotations
 
 import re
 from copy import deepcopy
+from math import isclose
 
 from .contracts import normalize
 from .provenance import input_hash
 from .reproducibility import reproduction
 
-_EFFECT = {"cohens_d", "cohens_dz", "rho", "cohens_f", "cohens_f2", "mean_difference", "sd_group1", "sd_group2", "p_null", "p_alternative", "p_group1", "p_group2", "joint_probabilities", "odds_ratio", "rate_ratio", "hazard_ratio", "true_difference", "sd", "lower_bound", "upper_bound", "a_path", "b_path"}
-_DESIGN = {"allocation_ratio", "equal_variance", "attrition_rate", "groups", "predictors", "total_predictors", "tested_predictors", "categories", "rows", "cols", "min_expected_count", "levels_a", "levels_b", "covariate_r2", "contrast_weights", "studies", "tau", "hartung_knapp", "looks", "bf_threshold", "r_scale", "prior_sd", "rope_threshold", "p_event", "control_hazard", "accrual_years", "followup_years", "dropout_hazard", "baseline_rate", "exposure", "baseline_probability", "predictor_r2", "x_variance", "x_probability", "x_mean", "x_sd", "residual_sd", "residual_sd_y", "residual_sd_m"}
+_EFFECT = {"baseline_category_probs", "p_baseline", "p_event", "cohens_d", "cohens_dz", "rho", "cohens_f", "cohens_f2", "mean_difference", "sd_group1", "sd_group2", "p_null", "p_alternative", "p_group1", "p_group2", "joint_probabilities", "odds_ratio", "rate_ratio", "hazard_ratio", "true_difference", "sd", "lower_bound", "upper_bound", "a_path", "b_path"}
+_DESIGN = {"family_alpha", "primary_tests", "allocation_ratio", "equal_variance", "attrition_rate", "groups", "predictors", "total_predictors", "tested_predictors", "categories", "rows", "cols", "min_expected_count", "levels_a", "levels_b", "covariate_r2", "contrast_weights", "studies", "tau", "hartung_knapp", "looks", "bf_threshold", "r_scale", "prior_sd", "rope_threshold", "p_event", "control_hazard", "accrual_years", "followup_years", "dropout_hazard", "baseline_rate", "exposure", "baseline_probability", "predictor_r2", "x_variance", "x_probability", "x_mean", "x_sd", "residual_sd", "residual_sd_y", "residual_sd_m"}
 
 
 def _numeric(value):
@@ -32,7 +33,7 @@ def anonymous_snapshot(result: dict) -> dict:
                 "design": {k: _numeric(v) for k, v in source.get("design", {}).items() if k in _DESIGN},
                 "decision_rule": source.get("decision_rule", {}), "assumptions": [], "simulation": {}, "status": "draft"}
     # A small set of categorical scientific values is enumerated explicitly.
-    for key, choices in {"tested_term": {"A", "B", "interaction"}, "bf_method": {"jzs", "bic"}, "predictor_distribution": {"binary", "normal"}}.items():
+    for key, choices in {"tested_term": {"A", "B", "AB"}, "bf_method": {"jzs", "bic"}, "predictor_distribution": {"binary", "normal"}}.items():
         value = source.get("design", {}).get(key)
         if value in choices:
             scenario["design"][key] = value
@@ -50,6 +51,20 @@ def anonymous_snapshot(result: dict) -> dict:
     version = provenance.get("engine_version", "")
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         raise ValueError("Missing release version")
+    from . import __version__
+    if version != __version__:
+        raise ValueError("Historical snapshots require their original engine release; recompute as a new version before sharing")
+    from . import method_version
+    if provenance.get("method_version") != method_version(scenario["model"]):
+        raise ValueError("Historical method version requires its original implementation; recompute before sharing")
+    from .api import analyze
+    replay = analyze(normalized)
+    if replay.get("status") != "complete":
+        raise ValueError("Sanitized request did not reproduce a complete result")
+    for key, value in values.items():
+        expected = replay["result"].get(key)
+        if expected is None or not isclose(value, expected, rel_tol=1e-12, abs_tol=1e-12):
+            raise ValueError("Stored result does not match the sanitized reproduction")
     scripts = reproduction(normalized)
     from . import __version__
     for script in scripts:

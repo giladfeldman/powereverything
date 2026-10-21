@@ -246,10 +246,10 @@ def test_gsdesign_group_sequential_and_schoenfeld_logrank():
     from powerbench.adapters import RGsDesignAdapter
 
     reference, tool, classification = _classified("group_sequential_t_d040_looks2", RGsDesignAdapter())
-    # gsDesign inflates the asymptotic-normal fixed N, PowerBench the exact t: 198 vs
-    # 200 is the declared normal-vs-t base gap, inside the 2% tolerance.
+    # The sequential normal-model search no longer inherits an exact-t floor;
+    # it now matches the independent gsDesign normal calculation at N=198.
     assert tool["n_total"] == 198
-    assert reference["n_total"] == 200
+    assert reference["n_total"] == 198
     assert classification.category == "compatible", classification.explanation
 
     reference, tool, classification = _classified("logrank_hr15_pevent06", RGsDesignAdapter())
@@ -259,12 +259,12 @@ def test_gsdesign_group_sequential_and_schoenfeld_logrank():
 
 
 @requires_r
-def test_rpact_group_sequential_matches_exactly():
+def test_rpact_group_sequential_declares_t_vs_normal_difference():
     from powerbench.adapters import RRpactAdapter
 
     reference, tool, classification = _classified("group_sequential_t_d040_looks2", RRpactAdapter())
     assert tool["n_total"] == 200
-    assert reference["n_total"] == 200
+    assert reference["n_total"] == 198
     assert classification.category == "compatible", classification.explanation
 
 

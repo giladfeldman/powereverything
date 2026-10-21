@@ -74,6 +74,9 @@ class Scenario:
         if not self.id or not self.title:
             raise ValueError("scenario id and title are required")
         self.decision_rule.validate()
+        forced = {"noninferiority_t": "greater", "tost_equivalence": "two.sided", "mediation_indirect": "two.sided"}
+        if self.model in forced and self.decision_rule.alternative != forced[self.model]:
+            raise ValueError(f"{self.model} implements alternative={forced[self.model]}; other alternatives are unsupported")
         if self.goal == "required_sample_size" and not (self.target_power and 0 < self.target_power < 1):
             raise ValueError("required_sample_size scenarios need target_power in (0, 1)")
         if self.model == "two_sample_t":

@@ -12,6 +12,7 @@ from scipy.stats import t as student_t
 
 from .references import required_n_two_sample_t
 from .schema import Scenario
+from .search import check_search_budget
 
 
 def equally_spaced_latent_category_probs(categories: int) -> list[float]:
@@ -108,6 +109,7 @@ def required_n_ordinal_regression(s: Scenario) -> dict[str, float | int | str]:
 
     n = 20
     while power_at(n) < target:
+        check_search_budget()
         n += 1
         if n > 1_000_000:
             raise RuntimeError("Could not bracket ordinal sample size")
@@ -170,6 +172,7 @@ def _critical_t_for_bf(n1: int, n2: int, bf_threshold: float, method: str, r_sca
     # Warm-start from the closed-form BIC critical value when using JZS.
     hi = max(2.0, (2 * log(bf_threshold) + log(n_total)) ** 0.5 + 1.0)
     while bf(hi) < bf_threshold:
+        check_search_budget()
         hi *= 1.4
         if hi > 200:
             _CRITICAL_T_CACHE[key] = hi
@@ -204,6 +207,7 @@ def required_n_bayes_factor_t(s: Scenario) -> dict[str, float | int | str]:
     # Binary search on n1; JZS critical-t evaluations are expensive.
     low, high = 10, 40
     while True:
+        check_search_budget()
         n2 = max(10, ceil(high * ratio))
         if bayes_factor_t_power(high, n2, d, threshold, method, r_scale) >= target:
             break
@@ -211,6 +215,7 @@ def required_n_bayes_factor_t(s: Scenario) -> dict[str, float | int | str]:
         if high > 1_000_000:
             raise RuntimeError("Could not bracket Bayes-factor sample size")
     while low + 1 < high:
+        check_search_budget()
         mid = (low + high) // 2
         n2 = max(10, ceil(mid * ratio))
         if bayes_factor_t_power(mid, n2, d, threshold, method, r_scale) >= target:
@@ -306,7 +311,7 @@ def group_sequential_boundaries(looks: int, alpha: float, alternative: str = "tw
             return continue_before - continue_through
 
         try:
-            bound = float(brentq(lambda b: exit_probability(b) - increment, 0.5, 12.0, xtol=1e-6, maxiter=100))
+            bound = float(brentq(lambda b, spent_increment=increment: exit_probability(b) - spent_increment, 0.5, 12.0, xtol=1e-6, maxiter=100))
         except ValueError:
             bound = float(norm.ppf(1 - increment / 2))
         boundaries.append(bound)
@@ -353,8 +358,9 @@ def required_n_group_sequential_t(s: Scenario) -> dict[str, float | int | str]:
     # hardcoded factor and then reported `two_sample_t_power` at that N -- the
     # fixed-design power of a single final test, which is not the power of a sequential
     # design and does not account for the interim looks at all.
-    n_per_arm = max(2, ceil(int(fixed["n_total"]) / 2))
+    n_per_arm = 2
     while group_sequential_power(n_per_arm, d, looks, alpha, alternative) < target:
+        check_search_budget()
         n_per_arm += 1
         if n_per_arm > 1_000_000:
             raise RuntimeError("Could not bracket group-sequential sample size")
@@ -463,6 +469,7 @@ def required_n_meta_analysis_random(s: Scenario) -> dict[str, Any]:
         )
     n = 4
     while meta_analysis_random_power(studies, n, d, tau, alpha, alternative) < target:
+        check_search_budget()
         n += 1
         if n > 1_000_000:
             raise RuntimeError("Could not bracket random-effects meta sample size")
@@ -509,6 +516,7 @@ def required_n_noninferiority_t(s: Scenario) -> dict[str, Any]:
     alpha, target = s.decision_rule.alpha, float(s.target_power)
     n1 = 4
     while True:
+        check_search_budget()
         n2 = max(4, ceil(n1 * ratio))
         power = noninferiority_t_power(n1, n2, true_diff, sd, margin, alpha)
         if power >= target:
@@ -645,10 +653,11 @@ def required_n_logrank_two_arm(s: Scenario) -> dict[str, Any]:
     n_total = max(4, ceil(events / p_event))
     # Grow until the discrete N meets target (ceiling may undershoot slightly for one-sided edges).
     while logrank_two_arm_power(n_total, hr, p_event, alpha, alternative, ratio) < target:
+        check_search_budget()
         n_total += 1
         if n_total > 1_000_000:
             raise RuntimeError("Could not bracket log-rank sample size")
-    n1 = max(2, int(round(n_total / (1 + ratio))))
+    n1 = max(2, round(n_total / (1 + ratio)))
     n2 = n_total - n1
     if n2 < 2:
         n2, n1 = 2, max(2, n_total - 2)
@@ -715,6 +724,7 @@ def required_n_rope_equivalence_t(s: Scenario) -> dict[str, Any]:
     target = float(s.target_power)
     n1 = 4
     while True:
+        check_search_budget()
         n2 = max(4, ceil(n1 * ratio))
         power = rope_equivalence_t_power(n1, n2, true_diff, sd, lower, upper, prior_sd, threshold)
         if power >= target:

@@ -120,11 +120,10 @@ class RSpecialistAdapter(Adapter):
             # Asymmetric bounds are a different design; decline rather than approximate.
             if abs(lower + upper) > 1e-9:
                 return False
-        if scenario.model in {"meta_analysis_random", "meta_analysis_fixed"}:
+        if scenario.model in {"meta_analysis_random", "meta_analysis_fixed"} and scenario.decision_rule.alternative != "two.sided":
             # The Monte Carlo branches test metafor's p-value, which is two-sided; a
             # one-sided scenario would be a wrong-question comparison.
-            if scenario.decision_rule.alternative != "two.sided":
-                return False
+            return False
         if scenario.model == "meta_analysis_random":
             return int(scenario.design.get("studies", 0)) > 2
         return True

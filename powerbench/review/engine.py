@@ -8,7 +8,7 @@ from math import isfinite
 from ..api import analyze
 from ..provenance import input_hash
 
-REVIEW_POLICY_VERSION = "1.0"
+REVIEW_POLICY_VERSION = "1.1"
 
 
 def review(record: dict) -> dict:
@@ -30,23 +30,54 @@ def review(record: dict) -> dict:
     required = {"model": scenario.get("model"), "alpha": rule.get("alpha"), "alternative": rule.get("alternative")}
     if request.get("operation", "plan") != "power":
         required["target_power"] = scenario.get("target_power")
+    design = scenario.get("design", {})
+    model = scenario.get("model")
+    required["multiplicity_method"] = rule.get("multiplicity_method")
+    model_keys = {
+        "one_way_anova": ("groups",), "linear_regression": ("predictors",),
+        "incremental_regression": ("total_predictors", "tested_predictors"), "moderation": ("total_predictors",),
+        "meta_analysis_fixed": ("studies",), "meta_analysis_random": ("studies", "tau"),
+        "group_sequential_t": ("looks",), "ordinal_regression": ("categories",),
+    }
+    for key in model_keys.get(model, ()):
+        required[key] = design.get(key)
+    if request.get("operation", "plan") == "plan" and model in {"two_sample_t", "welch_t", "two_sample_proportion", "logrank_two_arm", "group_sequential_t", "noninferiority_t", "tost_equivalence", "rope_equivalence_t", "bayes_factor_t"}:
+        required["allocation_ratio"] = design.get("allocation_ratio")
+    if model == "ordinal_regression":
+        required["baseline_category_probs"] = scenario.get("effect", {}).get("baseline_category_probs")
     missing = [name for name, value in required.items() if value is None or value == ""]
     if missing:
         return {"status": "incomplete", "classification": "incomplete_reporting", "reason": "Not explicitly supplied: " + ", ".join(missing)}
     result = analyze(request)
     if result["status"] != "complete":
-        return {"status": "unsupported", "classification": "unsupported_method", "calculation": result}
+        status = result["status"]
+        return {"status": status, "classification": {"unreachable": "unreachable_in_declared_domain", "budget_exhausted": "calculation_budget_exhausted"}.get(status, "unsupported_method"), "calculation": result}
     reported = record.get("reported_value")
     if isinstance(reported, bool) or not isinstance(reported, (int, float)) or not isfinite(reported):
         raise ValueError("An explicit numeric reported value is required")
     op = result["operation"]
     field = "n_total" if op == "plan" else "power" if op == "power" else "detectable_effect"
     expected = result["result"][field]
+    quantity = record.get("reported_quantity", field)
+    if quantity == "per_group_n":
+        if op != "plan" or result["result"].get("n1") != result["result"].get("n2") or "n1" not in result["result"]:
+            raise ValueError("A per-group count requires an explicitly balanced two-group plan")
+        expected, field = result["result"]["n1"], "per_group_n"
+    elif quantity == "recruitment_n":
+        if op != "plan" or "attrition_rate" not in design:
+            raise ValueError("Recruitment comparison requires an explicit attrition rate")
+        expected, field = result["reporting"]["distinctions"]["recruitment_n"], "recruitment_n"
+    elif quantity == "effect_magnitude":
+        if op != "detectable_effect":
+            raise ValueError("Effect magnitude is a sensitivity quantity")
+        expected, field = abs(expected), "effect_magnitude"
+    elif quantity != field:
+        raise ValueError("Reported quantity does not match the analysis operation")
     # Reporting precision must be declared by the reviewer. No blanket 2% N rule.
-    digits = record.get("reported_decimal_places", 0 if field == "n_total" else None)
+    digits = record.get("reported_decimal_places", 0 if field in {"n_total", "per_group_n", "recruitment_n"} else None)
     if isinstance(digits, bool) or not isinstance(digits, int) or not 0 <= digits <= 10:
         raise ValueError("Declare the reported decimal places (0–10)")
-    tolerance = .5 * 10 ** (-digits) if field != "n_total" else 0
+    tolerance = .5 * 10 ** (-digits) if field not in {"n_total", "per_group_n", "recruitment_n"} else 0
     consistent = abs(reported - expected) <= tolerance + 1e-12
     classification = "consistent_under_stated_assumptions" if consistent else "possible_discrepancy"
     text = (f"The reported {field} ({reported:g}) is " + ("consistent with" if consistent else "different from") + f" the matched calculation ({expected:.10g}). This checks the confirmed assumptions; it does not certify the study or establish an author error.")

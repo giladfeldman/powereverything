@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import ClassVar
 
 from ..parameterization import Parameterization
 from ..schema import Scenario
@@ -155,7 +156,7 @@ class RPwrAdapter(Adapter):
     #: Models with a balanced-only pwr entry point. Reporting a balanced answer
     #: for an unbalanced design would be a fabricated comparison, so these are
     #: declined outright when allocation_ratio != 1.
-    _BALANCED_ONLY = {"two_sample_t", "two_sample_proportion"}
+    _BALANCED_ONLY: ClassVar[set[str]] = {"two_sample_t", "two_sample_proportion"}
 
     def supports(self, scenario: Scenario) -> bool:
         if scenario.model not in {
@@ -169,15 +170,13 @@ class RPwrAdapter(Adapter):
             return False
         if scenario.decision_rule.alternative != "two.sided":
             return False
-        if scenario.model in self._BALANCED_ONLY and scenario.design.get("allocation_ratio", 1.0) != 1.0:
-            return False
         # NOTE: attrition_rate is deliberately NOT a reason to decline. PowerBench
         # reports the ANALYSIS n in `reference.n_total` and inflates separately into
         # `recruitment_total` (200 vs 223 for the balanced d=0.40 scenario), and the
         # matrix compares the analysis n. pwr answers that same question, so gating on
         # attrition would drop a valid comparison. Caught by
         # test_studio_two_sample_plan_is_assumption_visible.
-        return True
+        return not (scenario.model in self._BALANCED_ONLY and scenario.design.get("allocation_ratio", 1.0) != 1.0)
 
     def run(self, scenario: Scenario) -> dict:
         if not self.supports(scenario):

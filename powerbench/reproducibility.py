@@ -87,13 +87,19 @@ def reproduction(request: dict) -> list[dict]:
     result = [{"language": "python", "kind": "exact_reproduction", "code": python_script(request), "runtime": "Python 3.11+"}]
     script = r_script(request)
     if script:
-        result.append({"language": "r", "kind": "matched_independent_check", "code": script, "runtime": "base R", "browser_status": "validated_representative_cases_webr_0.6.0"})
+        result.append({"language": "r", "kind": "matched_independent_check", "code": script, "runtime": "base R", "browser_status": "available_unverified_request", "tested_runtime_examples": "WebR 0.6.0 representative matrix"})
     return result
 
 
 def export_bundle(result: dict) -> bytes:
     """Export science only. Caller must sanitize any user-authored free text before sharing."""
     from . import __version__
+    if result.get("provenance", {}).get("engine_version") != __version__:
+        raise ValueError("Historical bundles must be exported using their original engine version")
+    from .versioning import METHOD_VERSIONS
+    stored = result.get("provenance", {})
+    if stored.get("method_id") in METHOD_VERSIONS and stored.get("method_version") != METHOD_VERSIONS[stored["method_id"]]:
+        raise ValueError("Historical method version requires its original implementation for bundle export")
     request = result.get("normalized_request", result.get("scenario", {}))
     entries = {
         "README.md": "# Reproduce this analysis\n\nCreate a fresh Python environment, install requirements.lock.txt, then run reproduce.py. R, when supplied, is an independent implementation under the stated assumptions. Numerical agreement does not certify the design.\n",

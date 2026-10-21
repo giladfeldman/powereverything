@@ -82,6 +82,18 @@ def normalize(request: dict) -> tuple[dict, Scenario]:
     target = value["target_power"]
     if target is not None and (isinstance(target, bool) or not isinstance(target, (int, float))):
         raise ValueError("target_power must be a number")
+    rule = value["decision_rule"]
+    if rule.get("multiplicity_method", "none") != "none":
+        design = value["design"]
+        if "family_alpha" not in design or "primary_tests" not in design:
+            raise ValueError("Multiplicity requires explicit family_alpha and primary_tests; alpha is the per-test threshold")
+        from .power import count
+        tests = count(design["primary_tests"], "primary_tests", 1)
+        family = design["family_alpha"]
+        if isinstance(family, bool) or not isinstance(family, (int, float)) or not 0 < family < 1:
+            raise ValueError("family_alpha must lie in (0,1)")
+        if abs(rule_alpha - family / tests) > 1e-14:
+            raise ValueError("Per-test alpha does not match the declared multiplicity planning adjustment")
     scenario = Scenario(**{**value, "decision_rule": DecisionRule(**value["decision_rule"])})
     scalar = FIXED_MODELS.get(scenario.model)
     if goal == "sensitivity" and scalar:
@@ -94,6 +106,12 @@ def normalize(request: dict) -> tuple[dict, Scenario]:
     validation.validate()
     if value["target_power"] is not None and not 0 < float(value["target_power"]) < 1:
         raise ValueError("target_power must lie strictly between 0 and 1")
+    if goal == "sensitivity" and scalar:
+        domain = raw.get("domain", {})
+        if not isinstance(domain, dict):
+            raise ValueError("domain must be an object")
+        scale = max(float(scenario.effect["sd_group1"]), float(scenario.effect["sd_group2"])) if scenario.model == "welch_t" else 1.0
+        raw["domain"] = {"parameter": scalar, "direction": "negative" if scenario.decision_rule.alternative == "less" else "positive", "lower": 1e-8 * scale, "upper": .999999 if scalar == "rho" else 10 * scale, **domain}
     raw["scenario"] = scenario.to_dict()
     if goal == "sensitivity" and scalar:
         raw["scenario"]["effect"].pop(scalar, None)

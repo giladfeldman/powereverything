@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from math import sqrt, isfinite
+from math import isfinite, sqrt
 from typing import Any
 
 import numpy as np
-from scipy.stats import norm, t, ttest_ind
+from scipy.stats import binomtest, norm, t, ttest_ind
 
 TEMPLATES: dict[str, dict[str, Any]] = {
     "clustered_continuous_two_arm": {
@@ -40,8 +40,8 @@ TEMPLATES: dict[str, dict[str, Any]] = {
     },
     "logistic_two_arm": {
         "label": "Two-arm binary logistic trial",
-        "diagram": "arm -> binary outcome; analysis: logistic treatment coefficient Wald test",
-        "analysis_model": "Two-group logistic-regression Wald test of the treatment coefficient",
+        "diagram": "arm -> binary outcome; analysis: corrected log-odds-ratio Wald test",
+        "analysis_model": "Two-group log-odds-ratio Wald test with Haldane 0.5 cell correction",
         "defaults": {"n_per_arm": 100, "p_control": 0.30, "odds_ratio": 1.60, "replications": 1000, "seed": 20260718},
         "boundary": "An equal-allocation, independent binary-outcome exemplar. Rare events, separation, covariate adjustment, clustering, attrition, and non-collapsibility need a purpose-built logistic simulation.",
     },
@@ -107,8 +107,8 @@ def templates() -> list[dict[str, Any]]:
 
 
 def _ci(rate: float, completed: int) -> list[float]:
-    se = sqrt(rate * (1 - rate) / completed)
-    return [max(0, rate - 1.96 * se), min(1, rate + 1.96 * se)]
+    interval = binomtest(round(rate * completed), completed).proportion_ci(method="wilson")
+    return [float(interval.low), float(interval.high)]
 
 
 def _cluster_once(rng: np.random.Generator, values: dict[str, float], effect: float) -> tuple[float, list[dict[str, float]]]:
@@ -140,11 +140,13 @@ def _ols_pvalue(y: np.ndarray, design: np.ndarray, column: int) -> float:
     coefficients, _, _, _ = np.linalg.lstsq(design, y, rcond=None)
     residuals = y - design @ coefficients
     degrees_of_freedom = len(y) - design.shape[1]
-    if degrees_of_freedom <= 0:
-        return 1.0
+    if degrees_of_freedom <= 0 or np.linalg.matrix_rank(design) < design.shape[1]:
+        raise ValueError("Simulated regression has insufficient residual degrees of freedom or rank")
     covariance = (residuals @ residuals / degrees_of_freedom) * np.linalg.pinv(design.T @ design)
     standard_error = sqrt(max(0.0, float(covariance[column, column])))
-    return 1.0 if standard_error == 0 else float(2 * t.sf(abs(coefficients[column] / standard_error), degrees_of_freedom))
+    if standard_error <= 0:
+        raise ValueError("Simulated regression standard error is zero")
+    return float(2 * t.sf(abs(coefficients[column] / standard_error), degrees_of_freedom))
 
 
 def _factorial_once(rng: np.random.Generator, values: dict[str, float], interaction: float) -> tuple[float, list[dict[str, float]]]:
@@ -221,7 +223,7 @@ def _clustered_mar_once(rng: np.random.Generator, values: dict[str, float], effe
                     preview.append({"arm": arm, "cluster": cluster, "person": person, "outcome": float(outcome), "observed": int(keep)})
         means.append(np.array(arm_means) if arm_means else np.array([0.0]))
     if len(means[0]) < 2 or len(means[1]) < 2:
-        return 1.0, preview
+        raise ValueError("Simulated fit was degenerate; no complete result was produced")
     return float(ttest_ind(means[1], means[0], equal_var=False).pvalue), preview
 
 
@@ -362,7 +364,7 @@ def _run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = 
     by_noise = max(row["power"] for row in grid if row["effect_multiplier"] == 1 and row["power"] is not None) - min(row["power"] for row in grid if row["effect_multiplier"] == 1 and row["power"] is not None)
     driver = "effect size" if by_effect >= by_noise else sensitivity_key.replace("_", " ")
     update(98, "Preparing the explanation and results")
-    return {"classification": "simulation_first_exemplar_not_universal_calculator", "template": {"id": template_id, "label": template["label"], "diagram": template["diagram"], "analysis_model": template["analysis_model"], "boundary": template["boundary"]}, "assumptions": values, "preview_dataset": preview, "power": power, "power_mc_ci95": _ci(power, reps), "type_i_error": type_i_error, "type_i_error_mc_ci95": _ci(type_i_error, reps), "replications": reps, "failures": 0, "sensitivity_grid": grid, "largest_observed_sensitivity_driver": driver}
+    return {"classification": "simulation_first_exemplar_not_universal_calculator", "template": {"id": template_id, "label": template["label"], "diagram": template["diagram"], "analysis_model": template["analysis_model"], "boundary": template["boundary"]}, "assumptions": values, "preview_dataset": preview, "power": power, "power_mc_ci95": _ci(power, reps), "type_i_error": type_i_error, "type_i_error_mc_ci95": _ci(type_i_error, reps), "replications": reps, "failures": 0, "sensitivity_grid": grid, "largest_observed_sensitivity_driver": driver + " (exploratory finite-grid estimate; Monte Carlo noise may change this ordering)", "mc_interval_method": "Wilson 95%"}
 
 
 def normalize_simulation(payload: dict[str, Any]) -> dict[str, Any]:
@@ -379,7 +381,7 @@ def normalize_simulation(payload: dict[str, Any]) -> dict[str, Any]:
         if key == "template_id":
             continue
         if isinstance(value, bool):
-            raise ValueError(f"{key} must be numeric")
+            raise ValueError(f"{key} must be numeric")  # noqa: TRY004 -- public validation contract
         try:
             number = float(value)
         except (TypeError, ValueError) as error:
@@ -396,7 +398,7 @@ def normalize_simulation(payload: dict[str, Any]) -> dict[str, Any]:
             values[key] = number
     if values.get("cluster_size_min", 0) > values.get("cluster_size_max", 10000):
         raise ValueError("cluster_size_min exceeds cluster_size_max")
-    if any(values.get(key) == -1 for key in {"residual_corr", "covariate_outcome_r"}):
+    if any(values.get(key) == -1 for key in ("residual_corr", "covariate_outcome_r")):
         raise ValueError("Correlation must be strictly greater than -1")
     size = values.get("n", values.get("n_per_arm", values.get("participants_per_arm", values.get("n_per_cell", values.get("clusters_per_arm", 1)))))
     size *= values.get("cluster_size", values.get("cluster_size_max", 1)) * values.get("occasions", 1) * 4
@@ -413,7 +415,7 @@ def run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = N
     from .provenance import provenance
     from .reproducibility import python_script
     normalized = {"operation": "simulate", "payload": payload}
-    result.update(schema_version="1.0", simulation_policy_version="1.1", status="complete", operation="simulate", normalized_request=normalized,
-                  provenance=provenance("simulation_lab:" + str(payload.get("template_id")), normalized, "1.1"),
+    result.update(schema_version="1.0", simulation_policy_version="1.2", status="complete", operation="simulate", normalized_request=normalized,
+                  provenance=provenance("simulation_lab:" + str(payload.get("template_id")), normalized, "1.2"),
                   reproduction=[{"language": "python", "kind": "exact_reproduction", "code": python_script(normalized)}])
     return result

@@ -270,3 +270,18 @@ def comparable_cells(cells: list[dict], executed: set[str]) -> dict:
 def matrices_agree(committed: list[dict], fresh: list[dict], executed: set[str]) -> bool:
     """True when a committed matrix matches a fresh build, ignoring benign ordering."""
     return comparable_cells(committed, executed) == comparable_cells(fresh, executed)
+
+
+def reproduction_code(scenario) -> dict:
+    """A fresh rerun, explicitly separate from an archived tool/environment record."""
+    import json
+
+    from . import __version__
+    request = {"operation": "plan", "scenario": scenario.to_dict()}
+    literal = repr(json.dumps(request, ensure_ascii=False, allow_nan=False))
+    code = (f"# Python 3.11+; install powerbench=={__version__}; R and optional packages are needed for external tools.\n"
+            "# Recompute this design with the named engine; archived evidence may use older engine/tool versions.\n"
+            "import json\nfrom powerbench.contracts import normalize\nfrom powerbench.validation import evaluate_scenario\n"
+            f"request = json.loads({literal})\n_, scenario = normalize(request)\n"
+            "result = evaluate_scenario(scenario)\nprint(json.dumps(result, indent=2, allow_nan=False))\n")
+    return {"code": code, "language": "python", "engine_version": __version__, "kind": "current_engine_rerun_not_archived_environment", "request": request}

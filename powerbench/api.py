@@ -7,6 +7,7 @@ from .contracts import normalize
 from .power import fixed_power
 from .provenance import provenance
 from .references import analytic_reference
+from .search import SearchBudgetExceeded
 from .sensitivity import detectable_effect
 
 
@@ -31,17 +32,31 @@ def analyze(request: dict) -> dict:
         else:
             result = detectable_effect(scenario, normalized["sample"], normalized.get("domain"))
         status = result.get("status", "complete")
+    except SearchBudgetExceeded as exc:
+        result, status = {"reason": str(exc)}, "budget_exhausted"
     except NotImplementedError as exc:
         result, status = {"reason": str(exc)}, "unsupported"
     envelope = {"schema_version": "1.0", "status": status, "operation": normalized["operation"], "normalized_request": normalized,
                 "result": result, "assumptions": list(scenario.assumptions), "warnings": ["Conditional on the stated design and effect assumptions; this does not certify the study design."],
-                "diagnostics": result.get("diagnostics", {}), "provenance": provenance(scenario.model, normalized)}
+                "operation_policy_version": "1.1", "diagnostics": result.get("diagnostics", {}), "provenance": provenance(scenario.model, normalized)}
+    from .capabilities import FIXED_MODELS
+    scalar = FIXED_MODELS.get(scenario.model)
+    if normalized["operation"] == "detectable_effect" and scalar in request.get("scenario", {}).get("effect", {}):
+        envelope["warnings"].append("The supplied effect is the parameter being solved; it was excluded from the canonical sensitivity inputs.")
     from .reproducibility import reproduction
     envelope["reproduction"] = reproduction(normalized)
     from .resources import method_attribution
     envelope["citations"] = [method_attribution(scenario.model)]
     if status == "complete":
+        from math import ceil
+
         from .planning import _format_target_effect
         from .reporting import reporting
-        envelope["reporting"] = reporting(scenario, result, _format_target_effect(scenario))
+        rate = float(scenario.design.get("attrition_rate", 0))
+        if not 0 <= rate < 1:
+            raise ValueError("attrition_rate must lie in [0, 1)")
+        if rate and normalized["operation"] != "plan":
+            envelope["warnings"].append("Fixed sample counts are analysable; the declared attrition metadata is not applied to this fixed-sample calculation.")
+        recruitment = ceil(result["n_total"] / (1 - rate)) if rate and normalized["operation"] == "plan" else None
+        envelope["reporting"] = reporting(scenario, result, _format_target_effect(scenario), recruitment, scenario.design.get("family_alpha"))
     return envelope

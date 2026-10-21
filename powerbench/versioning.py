@@ -58,7 +58,7 @@ METHOD_VERSIONS: dict[str, str] = {
     "noninferiority_t": "1.0.0",
     "ordinal_regression": "2.0.0",
     "bayes_factor_t": "1.0.0",
-    "group_sequential_t": "2.0.0",
+    "group_sequential_t": "2.1.0",
     "logrank_two_arm": "1.1.0",
     "rope_equivalence_t": "1.0.0",
 }
@@ -78,6 +78,11 @@ class MethodChange:
 #: Newest first. `numeric_impact` must state what moved and by how much -- "improved
 #: accuracy" is not enough for someone deciding whether to re-check their study plan.
 METHOD_CHANGELOG: tuple[MethodChange, ...] = (
+    MethodChange(
+        method_id="group_sequential_t", version="2.1.0", date="2026-10-21",
+        summary="Search the sequential normal-model operating characteristic from its valid minimum, removing an unrelated exact-t fixed-design floor.",
+        numeric_impact="For balanced one- and two-look designs with d=0.4, alpha=.05 and target=.80, required total N changes from 200 to 198. This is the minimum under the documented normal sequential approximation; it is not the exact-t sample size. Unequal allocations are now rejected rather than silently balanced.",
+    ),
     MethodChange(
         method_id="ordinal_regression",
         version="2.0.0",

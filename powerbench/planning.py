@@ -37,7 +37,8 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
     multiplicity_method = str(payload.get("multiplicity_method", "none")).lower()
     if multiplicity_method not in {"none", "bonferroni", "hochberg"}:
         raise ValueError("multiplicity_method must be none, bonferroni, or hochberg.")
-    primary_tests = int(_number(payload, "primary_tests")) if payload.get("primary_tests") else 1
+    from .power import count
+    primary_tests = count(payload["primary_tests"], "primary_tests", 1) if payload.get("primary_tests") else 1
     if primary_tests < 1:
         raise ValueError("Number of primary tests must be at least 1.")
     # Hochberg step-up planning for equal-weight primaries uses the most stringent step (alpha/m),
@@ -289,7 +290,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         assumptions = [
             "Study-specific true effects are drawn around an average SMD with between-study SD tau.",
             "Each study is a balanced two-group continuous design; N is total across studies.",
-            "Inference uses a Hartung–Knapp / Sidik-style t critical with df = studies − 2 when studies > 2.",
+            "Inference uses a Hartung–Knapp / Sidik-style t critical with df = studies − 1 when studies > 2.",
             "The reference also reports a 95% prediction interval for a new study's true effect under the random-effects model.",
         ]
     elif model == "noninferiority_t":
@@ -374,11 +375,15 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
             "control_hazard": control_hazard,
             "attrition_rate": _number(payload, "attrition_rate"),
         }
+        if payload.get("p_event") not in (None, ""):
+            # Supplied event probability is the declared parameterization; do not
+            # insert hazard/follow-up defaults that cause the reference to replace it.
+            design = {"allocation_ratio": allocation_ratio, "attrition_rate": _number(payload, "attrition_rate")}
         title = "Two-arm log-rank survival plan"
         assumptions = [
             "The primary analysis is a two-arm log-rank test under proportional hazards.",
             "Events are planned via the Schoenfeld formula; total N = required events / p_event under administrative censoring.",
-            f"Planning event probability p_event={p_event:.3f} reflects accrual={accrual_years:g}y, follow-up={followup_years:g}y, and dropout hazard={dropout_hazard:g}.",
+            (f"Planning event probability p_event={p_event:.17g} is supplied directly; hazard-based event derivation is not used." if payload.get("p_event") not in (None, "") else f"Planning event probability p_event={p_event:.17g} is derived from accrual={accrual_years:g}y, follow-up={followup_years:g}y, and dropout hazard={dropout_hazard:g}."),
             "Exponential event times are assumed for the independent simulation; delayed entry, competing risks, and non-PH need a design-specific simulation.",
         ]
     elif model == "rope_equivalence_t":
@@ -415,6 +420,8 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
             f"(family alpha / {primary_tests} = {alpha:g}), which is slightly conservative for Hochberg power "
             "relative to the full stepwise rule."
         )
+    if multiplicity_method != "none":
+        design.update(family_alpha=family_alpha, primary_tests=primary_tests)
     scenario = Scenario(
         id="studio-preview",
         title=title,
@@ -467,7 +474,7 @@ def make_plan(payload: dict[str, Any]) -> dict[str, Any]:
         "primary_tests": primary_tests,
         "sensitivity": _sensitivity_curve(scenario, reference),
         "heterogeneity_sensitivity": _heterogeneity_curve(scenario),
-        "sensitivity_policy_version": "1.0",
+        "sensitivity_policy_version": "1.0", "planning_policy_version": "1.1",
         "caution": "This is a matched calculation under the displayed assumptions. It is not a declaration that the overall study plan is correct.",
     }
     from .provenance import provenance
@@ -477,7 +484,7 @@ def make_plan(payload: dict[str, Any]) -> dict[str, Any]:
     result["reproduction"] = [{"language": "python", "kind": "exact_reproduction", "code": python_script(payload, "make_plan")}]
     r = r_script(request)
     if r:
-        result["reproduction"].append({"language": "r", "kind": "matched_independent_check", "code": r, "browser_status": "validated_representative_cases_webr_0.6.0"})
+        result["reproduction"].append({"language": "r", "kind": "matched_independent_check", "code": r, "browser_status": "available_unverified_request"})
     result["normalized_request"] = request
     from .resources import method_attribution
     result["citations"] = [method_attribution(model)]
@@ -679,7 +686,7 @@ def _plan_report(
         f"**Framework:** {scenario.framework}",
         f"**Target effect (planning assumption, not observed):** {distinctions['target_effect']}",
         f"**Required analysable sample:** {reference['n_total']} total ({allocations}); this is not an observed sample size.",
-        f"**Target and calculated power:** {scenario.target_power:.0%}; {reference['power']:.3f}",
+        f"**Target and calculated power:** {scenario.target_power:.3%}; {reference['power']:.3f}",
         (
             f"**Decision rule:** {scenario.decision_rule.alternative}; "
             f"family alpha = {distinctions['family_alpha']}; "
@@ -709,7 +716,7 @@ def _plan_report(
         low, high = reference["prediction_interval_95"]
         lines.append(f"**Prediction interval (95%, new study):** [{low:.3f}, {high:.3f}]")
     if reference.get("hartung_knapp"):
-        lines.append("**Hartung–Knapp:** enabled (t critical with df = studies − 2).")
+        lines.append("**Hartung–Knapp:** enabled (t critical with df = studies − 1).")
     lines.extend([
         "",
         "## APA reporting draft",

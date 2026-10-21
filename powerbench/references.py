@@ -7,6 +7,7 @@ from math import ceil
 from scipy.stats import binom, binomtest, chi2, f, ncf, nct, ncx2, norm, t
 
 from .schema import Scenario
+from .search import check_search_budget, search_budget
 
 
 def two_sample_t_power(n1: int, n2: int, d: float, alpha: float, alternative: str) -> float:
@@ -28,10 +29,12 @@ def required_n_two_sample_t(s: Scenario) -> dict[str, float | int | str]:
     # degrees of freedom, where some numerical backends return NaN.
     lower, upper = 2, 4
     while two_sample_t_power(upper, max(2, ceil(upper * ratio)), d, alpha, alternative) < target:
+        check_search_budget()
         lower, upper = upper, upper * 2
         if upper > 10_000_000:
             raise RuntimeError("Could not bracket the requested sample size")
     while lower + 1 < upper:
+        check_search_budget()
         midpoint = (lower + upper) // 2
         if two_sample_t_power(midpoint, max(2, ceil(midpoint * ratio)), d, alpha, alternative) >= target:
             upper = midpoint
@@ -40,6 +43,7 @@ def required_n_two_sample_t(s: Scenario) -> dict[str, float | int | str]:
     n1 = upper
     n2 = max(2, ceil(n1 * ratio))
     while two_sample_t_power(n1, n2, d, alpha, alternative) < target:
+        check_search_budget()
         n1 += 1
         n2 = max(2, ceil(n1 * ratio))
     return {"n1": n1, "n2": n2, "n_total": n1 + n2, "power": two_sample_t_power(n1, n2, d, alpha, alternative), "method": "noncentral_t"}
@@ -70,6 +74,7 @@ def required_n_welch_t(s: Scenario) -> dict[str, float | int | str]:
     target, alternative = float(s.target_power), s.decision_rule.alternative
     n1 = 2
     while True:
+        check_search_budget()
         n2 = max(2, ceil(n1 * ratio))
         power = welch_t_power(n1, n2, difference, sd1, sd2, alpha, alternative)
         if power >= target:
@@ -97,6 +102,7 @@ def required_n_paired_t(s: Scenario) -> dict[str, float | int | str]:
     dz, alpha, target, alternative = float(s.effect["cohens_dz"]), s.decision_rule.alpha, float(s.target_power), s.decision_rule.alternative
     n = 2
     while paired_t_power(n, dz, alpha, alternative) < target:
+        check_search_budget()
         n += 1
     return {"n_total": n, "power": paired_t_power(n, dz, alpha, alternative), "method": "noncentral_t_paired_change"}
 
@@ -113,6 +119,7 @@ def required_n_one_sample_proportion(s: Scenario) -> dict[str, float | int | str
     alpha, target, alternative = s.decision_rule.alpha, float(s.target_power), s.decision_rule.alternative
     n = 2
     while one_sample_proportion_power(n, p0, p1, alpha, alternative) < target:
+        check_search_budget()
         n += 1
         if n > 20_000:
             raise RuntimeError("Could not find the required N within 20,000 observations")
@@ -137,6 +144,7 @@ def required_n_two_sample_proportion(s: Scenario) -> dict[str, float | int | str
     ratio, alpha, target, alternative = float(s.design.get("allocation_ratio", 1.0)), s.decision_rule.alpha, float(s.target_power), s.decision_rule.alternative
     n1 = 2
     while True:
+        check_search_budget()
         n2 = max(2, ceil(n1 * ratio))
         power = two_sample_proportion_power(n1, n2, p1, p2, alpha, alternative)
         if power >= target:
@@ -164,6 +172,7 @@ def required_n_chi_square_gof(s: Scenario) -> dict[str, float | int | str]:
     minimum_expected = float(s.design.get("min_expected_count", 5))
     n = max(2, ceil(minimum_expected / min(p_null)))
     while chi_square_gof_power(n, p_null, p_alternative, alpha) < target:
+        check_search_budget()
         n += 1
     return {
         "n_total": n,
@@ -184,6 +193,7 @@ def required_n_one_way_anova(s: Scenario) -> dict[str, float | int | str]:
     groups, cohens_f, alpha, target = int(s.design["groups"]), float(s.effect["cohens_f"]), s.decision_rule.alpha, float(s.target_power)
     n = 2
     while one_way_anova_power(n, groups, cohens_f, alpha) < target:
+        check_search_budget()
         n += 1
     return {"n_per_group": n, "n_total": n * groups, "power": one_way_anova_power(n, groups, cohens_f, alpha), "method": "noncentral_f_balanced_one_way_anova"}
 
@@ -198,6 +208,7 @@ def required_n_linear_regression(s: Scenario) -> dict[str, float | int | str]:
     predictors, f2, alpha, target = int(s.design["predictors"]), float(s.effect["cohens_f2"]), s.decision_rule.alpha, float(s.target_power)
     n = predictors + 2
     while linear_regression_power(n, predictors, f2, alpha) < target:
+        check_search_budget()
         n += 1
     return {"n_total": n, "power": linear_regression_power(n, predictors, f2, alpha), "method": "noncentral_f_fixed_design_overall_regression"}
 
@@ -217,6 +228,7 @@ def required_n_incremental_regression(s: Scenario) -> dict[str, float | int | st
     f2, alpha, target = float(s.effect["cohens_f2"]), s.decision_rule.alpha, float(s.target_power)
     n = total + 2
     while incremental_regression_power(n, total, tested, f2, alpha) < target:
+        check_search_budget()
         n += 1
     return {"n_total": n, "power": incremental_regression_power(n, total, tested, f2, alpha), "method": "noncentral_f_fixed_design_incremental_r_squared"}
 
@@ -235,6 +247,7 @@ def required_n_correlation(s: Scenario) -> dict[str, float | int | str]:
     rho, alpha, alternative, target = float(s.effect["rho"]), s.decision_rule.alpha, s.decision_rule.alternative, float(s.target_power)
     n = 4
     while correlation_power(n, rho, alpha, alternative) < target:
+        check_search_budget()
         n += 1
     return {"n_total": n, "power": correlation_power(n, rho, alpha, alternative), "method": "fisher_z_normal_approximation"}
 
@@ -263,6 +276,7 @@ def required_n_chi_square_independence(s: Scenario) -> dict[str, float | int | s
     min_cell = min(cell for row in joint for cell in row)
     n = max(2, ceil(minimum_expected / min_cell))
     while chi_square_independence_power(n, joint, alpha) < target:
+        check_search_budget()
         n += 1
     return {
         "n_total": n,
@@ -296,6 +310,7 @@ def required_n_factorial_anova(s: Scenario) -> dict[str, float | int | str]:
     alpha, target = s.decision_rule.alpha, float(s.target_power)
     n = 2
     while factorial_anova_power(n, levels_a, levels_b, term, cohens_f, alpha) < target:
+        check_search_budget()
         n += 1
     cells = levels_a * levels_b
     return {
@@ -320,6 +335,7 @@ def required_n_ancova(s: Scenario) -> dict[str, float | int | str]:
     r2, alpha, target = float(s.design["covariate_r2"]), s.decision_rule.alpha, float(s.target_power)
     n = 3
     while ancova_power(n, groups, cohens_f, r2, alpha) < target:
+        check_search_budget()
         n += 1
     return {
         "n_per_group": n,
@@ -365,6 +381,7 @@ def required_n_planned_contrast(s: Scenario) -> dict[str, float | int | str]:
     cohens_f, alpha, target = float(s.effect["cohens_f"]), s.decision_rule.alpha, float(s.target_power)
     n = 2
     while planned_contrast_power(n, groups, weights, cohens_f, alpha) < target:
+        check_search_budget()
         n += 1
     return {
         "n_per_group": n,
@@ -384,6 +401,7 @@ def required_n_moderation(s: Scenario) -> dict[str, float | int | str]:
     alpha, target = s.decision_rule.alpha, float(s.target_power)
     n = total + 2
     while moderation_power(n, total, f2, alpha) < target:
+        check_search_budget()
         n += 1
     return {"n_total": n, "power": moderation_power(n, total, f2, alpha), "method": "noncentral_f_interaction_increment"}
 
@@ -452,6 +470,7 @@ def required_n_logistic_regression(s: Scenario) -> dict[str, float | int | str]:
 
     n = 20
     while power_at(n) < target:
+        check_search_budget()
         n += 1
         if n > 1_000_000:
             raise RuntimeError("Could not bracket logistic sample size")
@@ -488,6 +507,7 @@ def required_n_poisson_regression(s: Scenario) -> dict[str, float | int | str]:
     alpha, target, alternative = s.decision_rule.alpha, float(s.target_power), s.decision_rule.alternative
     n = 20
     while poisson_regression_power(n, rate_ratio, baseline_rate, exposure, alpha, alternative) < target:
+        check_search_budget()
         n += 1
         if n > 1_000_000:
             raise RuntimeError("Could not bracket Poisson sample size")
@@ -531,6 +551,7 @@ def required_n_tost_equivalence(s: Scenario) -> dict[str, float | int | str]:
     alpha, target = s.decision_rule.alpha, float(s.target_power)
     n1 = 4
     while True:
+        check_search_budget()
         n2 = max(4, ceil(n1 * ratio))
         power = tost_equivalence_power(n1, n2, true_diff, sd, lower, upper, alpha)
         if power >= target:
@@ -604,6 +625,7 @@ def required_n_mediation_indirect(s: Scenario) -> dict[str, float | int | str]:
 
     n = 20
     while power_at(n) < target:
+        check_search_budget()
         n += 1
         if n > 1_000_000:
             raise RuntimeError("Could not bracket mediation sample size")
@@ -632,6 +654,7 @@ def required_n_meta_analysis_fixed(s: Scenario) -> dict[str, float | int | str]:
     alpha, target, alternative = s.decision_rule.alpha, float(s.target_power), s.decision_rule.alternative
     n = 4
     while meta_analysis_fixed_power(studies, n, d, alpha, alternative) < target:
+        check_search_budget()
         n += 1
     return {
         "n_per_group_per_study": n,
@@ -643,6 +666,14 @@ def required_n_meta_analysis_fixed(s: Scenario) -> dict[str, float | int | str]:
 
 
 def analytic_reference(s: Scenario) -> dict[str, float | int | str]:
+    s.validate()
+    scalar = {"two_sample_t": "cohens_d", "paired_t": "cohens_dz", "welch_t": "mean_difference", "correlation": "rho"}.get(s.model)
+    if scalar and s.decision_rule.alternative != "two.sided":
+        effect = float(s.effect[scalar])
+        if (s.decision_rule.alternative == "greater" and effect <= 0) or (s.decision_rule.alternative == "less" and effect >= 0):
+            raise ValueError("Effect direction is incompatible with the one-sided planning alternative")
+    if s.model == "group_sequential_t" and float(s.design.get("allocation_ratio", 1)) != 1:
+        raise ValueError("The sequential reference supports balanced allocation only")
     if s.goal != "required_sample_size":
         raise ValueError("Use powerbench.api.analyze with an explicit sample for fixed-N power or sensitivity")
     from .specialist_extras import (
@@ -684,7 +715,7 @@ def analytic_reference(s: Scenario) -> dict[str, float | int | str]:
         "logrank_two_arm": required_n_logrank_two_arm,
         "rope_equivalence_t": required_n_rope_equivalence_t,
     }
-    try:
+    if s.model not in dispatch:
+        raise NotImplementedError(f"No analytic reference for {s.model}")
+    with search_budget():
         return dispatch[s.model](s)
-    except KeyError as error:
-        raise NotImplementedError(f"No analytic reference for {s.model}") from error

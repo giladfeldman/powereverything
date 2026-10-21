@@ -1,12 +1,16 @@
 """Deterministic manuscript drafts. Chronology and rationale are never invented."""
 from __future__ import annotations
 
+import json
+
 from .schema import Scenario
 
-TEMPLATE_VERSION = "1.0"
+TEMPLATE_VERSION = "1.1"
 
 
 def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | None = None, family_alpha: float | None = None) -> dict:
+    effect_text = "; ".join(f"{key.replace('_', ' ')} = {json.dumps(value, ensure_ascii=False)}" for key, value in s.effect.items() if key != "parameterization")
+    target_percent = f"{float(s.target_power) * 100:.12g}%" if s.target_power is not None else "not specified"
     unit = "complete pairs" if s.model == "paired_t" else "observations"
     if s.model.startswith("meta_analysis"):
         unit = f"observations across {s.design['studies']} studies"
@@ -17,12 +21,15 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
         criterion = (f"BF10 threshold {s.design.get('bf_threshold')} under the stated prior" if s.model == "bayes_factor_t" else f"posterior ROPE probability threshold {s.design.get('rope_threshold')}")
         rule = f"The success criterion was {criterion}."
     else:
-        rule = f"The decision rule used alpha = {alpha:g}, alternative = {s.decision_rule.alternative}"
+        test = {"noninferiority_t": "a one-sided non-inferiority test", "tost_equivalence": "two one-sided equivalence tests", "mediation_indirect": "joint significance of two-sided path tests"}.get(s.model)
+        if s.model in {"one_way_anova", "factorial_anova", "ancova", "planned_contrast", "linear_regression", "incremental_regression", "moderation"}:
+            test = "an upper-tail omnibus F test"
+        rule = f"The decision rule used alpha = {alpha:g}, " + (test if test else f"alternative = {s.decision_rule.alternative}")
         if family_alpha is not None and s.decision_rule.multiplicity_method != "none":
             rule += f", with family alpha = {family_alpha:g} and {s.decision_rule.multiplicity_method} planning for the primary family"
         rule += "."
     if s.goal == "sensitivity":
-        body = (f"With a fixed analysable sample of {n} {unit}{allocation}, the detectable {result['effect_parameter']} was {result['detectable_effect']:.6g} at target power {float(s.target_power):.1%} under the stated design. "
+        body = (f"With a fixed analysable sample of {n} {unit}{allocation}, the detectable {result['effect_parameter']} was {result['detectable_effect']:.17g} at target power {target_percent} under the stated design. "
                 "This is a fixed-sample sensitivity analysis; it does not use an observed effect to establish evidence for a null hypothesis. ")
     elif s.goal == "achieved_power":
         body = (f"For a fixed analysable sample of {n} {unit}{allocation} and the hypothetical effect ({effect_text}), conditional power was {result['power']:.4f}. "
@@ -31,9 +38,15 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
         criterion_word = "probability of meeting the stated success criterion" if s.framework == "bayesian" else "power"
         action = "establishing equivalence under the specified bounds" if s.model == "tost_equivalence" else "meeting the stated decision rule"
         body = (f"Under the stated planning assumptions for {s.title.lower()}, an analysable sample of {n} {unit}{allocation} was required for {action}. "
-                f"The target effect ({effect_text}) is a planning assumption. Target {criterion_word} was {float(s.target_power):.1%}; the calculated value at the integer sample size was {result['power']:.4f}. ")
+                f"The target effect ({effect_text}) is a planning assumption. Target {criterion_word} was {target_percent}; the calculated value at the integer sample size was {result['power']:.4f}. ")
     if recruitment is not None:
         body += f"The recruitment target was {recruitment}, allowing for the stated attrition; the analysable sample was {n}. "
+    if s.goal != "required_sample_size" and s.design.get("attrition_rate", 0):
+        body += "The fixed counts are analysable; attrition metadata was not applied as an inflation or reduction. "
+    if s.design:
+        body += "Design parameters: " + "; ".join(f"{key.replace('_', ' ')} = {json.dumps(value, ensure_ascii=False)}" for key, value in sorted(s.design.items())) + ". "
+    if s.model == "meta_analysis_random":
+        body += (f"Hartung-Knapp inference used df = {int(s.design['studies']) - 1}. " if result.get("hartung_knapp") else "The two-study boundary uses a normal approximation rather than Hartung-Knapp inference; small-study calibration is not established by this calculation. ")
     body += rule
     from . import __version__, method_version
     body += f" Calculations used PowerBench {__version__}, method {s.model} version {method_version(s.model)}."
