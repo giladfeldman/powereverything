@@ -57,9 +57,9 @@ METHOD_VERSIONS: dict[str, str] = {
     "meta_analysis_random": "2.0.0",
     "noninferiority_t": "1.0.0",
     "ordinal_regression": "2.0.0",
-    "bayes_factor_t": "1.0.0",
+    "bayes_factor_t": "1.1.0",
     "group_sequential_t": "2.2.0",
-    "logrank_two_arm": "1.1.0",
+    "logrank_two_arm": "1.2.0",
     "rope_equivalence_t": "1.0.0",
 }
 
@@ -78,6 +78,8 @@ class MethodChange:
 #: Newest first. `numeric_impact` must state what moved and by how much -- "improved
 #: accuracy" is not enough for someone deciding whether to re-check their study plan.
 METHOD_CHANGELOG: tuple[MethodChange, ...] = (
+    MethodChange(method_id="bayes_factor_t",version="1.1.0",date="2026-10-21",summary="Integrate the full Cauchy prior using adaptive shifted/scaled quadrature; evaluate the declared minimum and fail closed on an unbracketed threshold.",numeric_impact="At t=3,n1=n2=50,r=.7071, BF10 changes from 10.552472875 to 10.383633507, matching R BayesFactor and independent integration. Strong-effect BIC plans can now return n1=10 instead of the off-by-one n1=11. Required N may change under corrected JZS thresholds."),
+    MethodChange(method_id="logrank_two_arm",version="1.2.0",date="2026-10-21",summary="Compute planned log-rank power with the realized integer arm allocation and grow N against that power.",numeric_impact="For HR=5,event probability=1,balanced requested allocation and alpha=.05,target=.80, the previously reported power .826774055 becomes .824563400 for its actual odd-N split; near-threshold integer N can increase."),
     MethodChange(
         method_id="group_sequential_t", version="2.2.0", date="2026-10-21",
         summary="Seed normal-QMC integration and request explicit tolerances; reject boundary-calibration failures instead of silently substituting unconditional boundaries.",

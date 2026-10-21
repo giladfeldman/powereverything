@@ -50,6 +50,8 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
         body += "Design parameters: " + "; ".join(f"{key.replace('_', ' ')} = {json.dumps(value, ensure_ascii=False)}" for key, value in sorted(s.design.items())) + ". "
     if s.model == "meta_analysis_random":
         body += (f"Hartung-Knapp inference used df = {int(s.design['studies']) - 1}. " if result.get("hartung_knapp") else "The two-study boundary uses a normal approximation rather than Hartung-Knapp inference; small-study calibration is not established by this calculation. ")
+    if result.get("search_domain"):
+        body += "Search constraints: " + json.dumps(result["search_domain"],ensure_ascii=False,sort_keys=True) + ". "
     body += rule
     from . import __version__, method_version
     body += f" Calculations used PowerBench {__version__}, method {s.model} version {method_version(s.model)}."

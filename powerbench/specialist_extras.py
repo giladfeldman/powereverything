@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from math import ceil, exp, log
+from math import ceil, exp, isfinite, log, log1p, pi
 from typing import Any
 
 import numpy as np
+from scipy.integrate import quad
 from scipy.optimize import brentq
-from scipy.stats import cauchy, multivariate_normal, nct, norm
+from scipy.stats import chi2, multivariate_normal, nct, norm
 from scipy.stats import t as student_t
 
 from .references import required_n_two_sample_t
@@ -118,6 +119,7 @@ def required_n_ordinal_regression(s: Scenario) -> dict[str, float | int | str]:
         "power": power_at(n),
         "categories": categories,
         "method": "whitehead_proportional_odds",
+        "search_domain": {"minimum_n_total": 20, "interpretation": "Minimum within the declared search domain; the asymptotic approximation is not certified at small samples."},
     }
 
 
@@ -127,28 +129,32 @@ def bic_bf10_from_t(tstat: float, n_total: int) -> float:
 
 
 def jzs_bf10_from_t(tstat: float, n1: int, n2: int, r_scale: float = 0.7071) -> float:
-    """Rouder et al. (2009) JZS Bayes factor via Cauchy prior on δ (fixed-node quadrature)."""
-    tstat = float(np.clip(tstat, -40.0, 40.0))
-    nu = n1 + n2 - 2
-    n_eff = n1 * n2 / (n1 + n2)
-    m0 = float(student_t.pdf(tstat, nu))
-    if m0 <= 0 or not np.isfinite(m0):
-        return float("inf")
-    # Equally spaced probability nodes under the Cauchy prior (fast, stable alternative to adaptive quad).
-    probs = np.linspace(0.02, 0.98, 41)
-    deltas = cauchy.ppf(probs, 0, r_scale)
-    weights = np.full(deltas.shape, 1.0 / len(deltas))
-    ncps = np.clip(deltas * (n_eff**0.5), -40.0, 40.0)
-    try:
-        with np.errstate(over="ignore", invalid="ignore"):
-            densities = nct.pdf(tstat, nu, ncps)
-    except OverflowError:
-        densities = np.zeros_like(ncps, dtype=float)
-    densities = np.nan_to_num(densities, nan=0.0, posinf=0.0, neginf=0.0)
-    m1 = float(np.sum(weights * densities))
-    if m1 <= 0 or not np.isfinite(m1):
-        return 0.0
-    return float(m1 / m0)
+    """Full Cauchy-prior marginal via its normal/inverse-chi-square mixture.
+
+    With H=abs(N(0,1)), delta|H ~ N(0,r**2/H**2). Integrating
+    delta first makes T a central t scaled by sqrt(1+n_eff*r**2/H**2).
+    Integrating its likelihood ratio over the half-normal H is equivalent to
+    the full noncentral-t/Cauchy integral, without unstable extreme nct tails.
+    """
+    if not isfinite(tstat) or not isfinite(r_scale) or r_scale <= 0 or n1 < 2 or n2 < 2:
+        raise ValueError("JZS integration requires finite t, positive prior scale and at least two observations per arm")
+    nu, n_eff = n1+n2-2, n1*n2/(n1+n2)
+    squared=tstat*tstat
+    null_term=.5*(nu+1)*log1p(squared/nu)
+    def log_ratio(variance):
+        return -.5*log(variance)-.5*(nu+1)*log1p(squared/(nu*variance))+null_term
+    offset=log_ratio(max(1.,squared))
+    def integrand(h):
+        check_search_budget()
+        if h==0:return 0.
+        variance=1+n_eff*r_scale*r_scale/(h*h)
+        return exp(log_ratio(variance)-offset-.5*h*h)*(2/pi)**.5
+    integral,error=quad(integrand,0,np.inf,epsabs=1e-10,epsrel=1e-9,limit=200)
+    if integral<=0 or not isfinite(integral) or error>max(1e-10,1e-6*integral):
+        raise ValueError("JZS quadrature did not converge to the declared numerical tolerance")
+    log_bf=log(integral)+offset
+    if log_bf>709:raise ValueError("JZS Bayes factor exceeds the supported finite numeric range")
+    return exp(log_bf)
 
 
 _CRITICAL_T_CACHE: dict[tuple[int, int, float, str, float], float] = {}
@@ -175,8 +181,7 @@ def _critical_t_for_bf(n1: int, n2: int, bf_threshold: float, method: str, r_sca
         check_search_budget()
         hi *= 1.4
         if hi > 200:
-            _CRITICAL_T_CACHE[key] = hi
-            return hi
+            raise ValueError("Bayes-factor threshold was not bracketed; no critical value was accepted")
     value = float(brentq(lambda tstat: bf(tstat) - bf_threshold, 0.0, hi, xtol=1e-3, maxiter=40))
     _CRITICAL_T_CACHE[key] = value
     return value
@@ -194,7 +199,18 @@ def bayes_factor_t_power(
     df = n1 + n2 - 2
     ncp = cohens_d / (1 / n1 + 1 / n2) ** 0.5
     critical = _critical_t_for_bf(n1, n2, bf_threshold, method, r_scale)
-    return float(nct.sf(critical, df, ncp) + nct.cdf(-critical, df, ncp))
+    value = float(nct.sf(critical, df, ncp) + nct.cdf(-critical, df, ncp))
+    if not isfinite(value):
+        # Conditioning on V~chi-square(df) gives an independent, bounded integral
+        # when a library noncentral-t tail is numerically undefined.
+        def conditional(u):
+            check_search_budget()
+            threshold = critical*(chi2.ppf(u,df)/df)**.5
+            return float(norm.sf(threshold-ncp)+norm.cdf(-threshold-ncp))
+        value,error=quad(conditional,0,1,epsabs=1e-9,epsrel=1e-8,limit=200)
+        if not isfinite(value) or error > 1e-6:
+            raise ValueError("Bayes-factor design probability did not converge")
+    return value
 
 
 def required_n_bayes_factor_t(s: Scenario) -> dict[str, float | int | str]:
@@ -205,7 +221,7 @@ def required_n_bayes_factor_t(s: Scenario) -> dict[str, float | int | str]:
     r_scale = float(s.design.get("r_scale", 0.7071))
     target = float(s.target_power)
     # Binary search on n1; JZS critical-t evaluations are expensive.
-    low, high = 10, 40
+    low, high = 9, 10
     while True:
         check_search_budget()
         n2 = max(10, ceil(high * ratio))
@@ -238,6 +254,8 @@ def required_n_bayes_factor_t(s: Scenario) -> dict[str, float | int | str]:
         "critical_t": float(critical),
         "degrees_freedom": int(n1 + n2 - 2),
         "method": label,
+        "search_domain": {"minimum_n1": 10, "minimum_n2": 10, "interpretation": "Minimum within the declared search domain, not across smaller samples."},
+        "integration": {"method": "adaptive_full_cauchy_halfnormal_mixture" if method == "jzs" else "closed_form_BIC", "requested_relative_tolerance": 1e-8, "critical_t_tolerance": 1e-3},
     }
 
 
@@ -509,6 +527,7 @@ def required_n_meta_analysis_random(s: Scenario) -> dict[str, Any]:
         "prediction_interval_method": "t_k_minus_2_known_tau_approximation" if studies > 2 else "normal_known_tau_approximation_at_two_studies",
         "calibration_limit": "tau is treated as known; prediction coverage and estimated-heterogeneity Hartung-Knapp calibration are not certified by this calculation.",
         "method": "random_effects_smd_meta_analysis_hartung_knapp_t",
+        "search_domain": {"minimum_n_per_group_per_study": 4, "interpretation": "Minimum within the declared search domain; smaller study groups were not evaluated."},
     }
 
 
@@ -546,6 +565,7 @@ def required_n_noninferiority_t(s: Scenario) -> dict[str, Any]:
                 "n_total": n1 + n2,
                 "power": power,
                 "method": "one_sided_noninferiority_t_approximation",
+                "search_domain": {"minimum_n1": 4, "minimum_n2": 4, "interpretation": "Minimum within the declared search domain; smaller arms were not evaluated."},
             }
         n1 += 1
         if n1 > 1_000_000:
@@ -675,16 +695,18 @@ def required_n_logrank_two_arm(s: Scenario) -> dict[str, Any]:
     events = schoenfeld_events(hr, alpha, target, ratio, alternative)
     n_total = max(4, ceil(events / p_event))
     # Grow until the discrete N meets target (ceiling may undershoot slightly for one-sided edges).
-    while logrank_two_arm_power(n_total, hr, p_event, alpha, alternative, ratio) < target:
+    def split(total):
+        first = max(2, min(total-2, int(total/(1+ratio)+.5)))
+        return first, total-first
+    def discrete_power(total):
+        first, second = split(total)
+        return logrank_two_arm_power(total, hr, p_event, alpha, alternative, second/first)
+    while discrete_power(n_total) < target:
         check_search_budget()
         n_total += 1
         if n_total > 1_000_000:
             raise RuntimeError("Could not bracket log-rank sample size")
-    n1 = max(2, round(n_total / (1 + ratio)))
-    n2 = n_total - n1
-    if n2 < 2:
-        n2, n1 = 2, max(2, n_total - 2)
-        n_total = n1 + n2
+    n1, n2 = split(n_total)
     return {
         "n1": n1,
         "n2": n2,
@@ -692,7 +714,9 @@ def required_n_logrank_two_arm(s: Scenario) -> dict[str, Any]:
         "n_events": float(n_total * p_event),
         "p_event": p_event,
         "p_event_source": p_event_source,
-        "power": logrank_two_arm_power(n_total, hr, p_event, alpha, alternative, ratio),
+        "power": discrete_power(n_total),
+        "requested_allocation_ratio": ratio,
+        "realized_allocation_ratio": n2/n1,
         "method": "schoenfeld_logrank_events_then_n_over_p_event",
     }
 

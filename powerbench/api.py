@@ -31,6 +31,8 @@ def analyze(request: dict) -> dict:
             result = fixed_power(scenario, normalized["sample"])
         else:
             result = detectable_effect(scenario, normalized["sample"], normalized.get("domain"))
+        from .contracts import finite_tree
+        finite_tree(result)
         status = result.get("status", "complete")
     except SearchBudgetExceeded as exc:
         result, status = {"reason": str(exc)}, "budget_exhausted"
@@ -39,6 +41,8 @@ def analyze(request: dict) -> dict:
     envelope = {"schema_version": "1.0", "status": status, "operation": normalized["operation"], "normalized_request": normalized,
                 "result": result, "assumptions": list(scenario.assumptions), "warnings": ["Conditional on the stated design and effect assumptions; this does not certify the study design."],
                 "operation_policy_version": "1.2", "diagnostics": result.get("diagnostics", {}), "provenance": provenance(scenario.model, normalized)}
+    if result.get("search_domain"):
+        envelope["warnings"].append(result["search_domain"]["interpretation"])
     from .capabilities import FIXED_MODELS
     scalar = FIXED_MODELS.get(scenario.model)
     if normalized["operation"] == "detectable_effect" and scalar in request.get("scenario", {}).get("effect", {}):
