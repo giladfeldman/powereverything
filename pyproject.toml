@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "powerbench"
-version = "0.8.2"
+version = "0.9.0"
 description = "Assumption-aware statistical power analysis with independent verification"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -50,3 +50,6 @@ include = ["/powerbench", "/data/scenarios", "/data/benchmarks", "/tests", "/doc
 testpaths = ["tests"]
 addopts = "-m 'not slow'"
 markers = ["slow: long-running Monte Carlo gates; excluded from the default run"]
+
+[project.scripts]
+powerbench = "powerbench.__main__:main"

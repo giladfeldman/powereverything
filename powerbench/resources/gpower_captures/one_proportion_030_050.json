@@ -1,0 +1,27 @@
+{
+  "scenario_id": "one_proportion_030_050",
+  "method_id": "one_sample_proportion",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "Exact - Proportion: Difference from constant (binomial test, one sample case)",
+  "gui_inputs": {
+    "Effect size g": "0.20",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Constant proportion": "0.30",
+    "tails": "Two",
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 47,
+    "actual_power": 0.8091538
+  },
+  "scenario_hash_at_capture": "db2b8455cc47f35a",
+  "screenshots": [],
+  "assumptions": [
+    "G*Power parameterizes the one-sample binomial by effect size g = p_alternative - p_null = 0.50 - 0.30 = 0.20 alongside the constant proportion, rather than by the two proportions directly."
+  ],
+  "signature": "de3e299267640b22"
+}

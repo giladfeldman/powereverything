@@ -14,6 +14,7 @@ import pytest
 
 from powerbench.adapters.manual_gpower import (
     REQUIRED_FIELDS,
+    CAPTURE_DIR,
     ManualGPowerAdapter,
     capture_signature,
     scenario_hash,
@@ -21,7 +22,7 @@ from powerbench.adapters.manual_gpower import (
 from powerbench.schema import load_scenario
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CAPTURE_DIR = REPO_ROOT / "data" / "gpower_captures"
+assert CAPTURE_DIR.is_dir(), "The wheel must include its committed captures"
 SCENARIO = "data/scenarios/two_sample_t_balanced.json"
 
 
@@ -126,7 +127,8 @@ def test_missing_capture_declines_honestly(tmp_path):
     adapter = ManualGPowerAdapter(directory=tmp_path / "empty")
     result = adapter.run(load_scenario(REPO_ROOT / SCENARIO))
     assert result["status"] == "unsupported"
-    assert "cannot be scripted" in result["reason"]
+    assert "No committed G*Power capture" in result["reason"]
+    assert "cannot be scripted" not in result["reason"]
 
 
 def test_adapter_never_executes_anything():

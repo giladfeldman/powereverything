@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
-from .base import Adapter
 from ..parameterization import Parameterization
 from ..schema import Scenario
+from .base import Adapter
 
 #: How R `pwr` defines what it computes, per method it supports. Declared so that a
 #: numeric difference can be attributed rather than merely reported. Empty declarations are
@@ -147,7 +147,7 @@ class RPwrAdapter(Adapter):
 
     def __init__(self, rscript: str = "Rscript", script: str | Path | None = None):
         self.rscript = _resolve_rscript(rscript)
-        self.script = Path(script or Path(__file__).parents[2] / "tools" / "r" / "pwr_adapter.R")
+        self.script = Path(script or Path(__file__).parents[1] / "resources" / "r" / "pwr_adapter.R")
 
     def parameterization(self, method_id: str) -> Parameterization:
         return _PWR_PARAMETERIZATIONS.get(method_id, Parameterization())

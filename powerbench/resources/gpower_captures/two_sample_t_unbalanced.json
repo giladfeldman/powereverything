@@ -1,0 +1,30 @@
+{
+  "scenario_id": "two-sample-t-unbalanced-d-0.30",
+  "method_id": "two_sample_t",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "t tests - Means: Difference between two independent means (two groups)",
+  "gui_inputs": {
+    "Effect size d": "0.30",
+    "α err prob": "0.05",
+    "Power": "0.90",
+    "Allocation ratio N2/N1": "1.5",
+    "tails": "Two",
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 490,
+    "actual_power": 0.9009413,
+    "Noncentrality parameter δ": 3.253306,
+    "Critical t": 1.9648371,
+    "Df": 488
+  },
+  "scenario_hash_at_capture": "95a4af43f2f5dbc6",
+  "screenshots": [],
+  "assumptions": [
+    "Scenario applies 10% attrition after the test-level N; G*Power has no attrition control, so this captures the pre-attrition design."
+  ],
+  "signature": "76fc69b238f4efe3"
+}

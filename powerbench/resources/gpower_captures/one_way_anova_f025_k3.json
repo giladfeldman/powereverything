@@ -1,0 +1,28 @@
+{
+  "scenario_id": "one_way_anova_f025_k3",
+  "method_id": "one_way_anova",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "F tests - ANOVA: Fixed effects, omnibus, one-way",
+  "gui_inputs": {
+    "Effect size f": "0.25",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Number of groups": "3",
+    "tails": null,
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 159,
+    "actual_power": 0.8048873,
+    "Noncentrality parameter λ": 9.9375,
+    "Critical F": 3.0540042,
+    "Numerator df": 2,
+    "Denominator df": 156
+  },
+  "scenario_hash_at_capture": "817b8eb3bec9a5da",
+  "screenshots": [],
+  "signature": "21c254587928323e"
+}

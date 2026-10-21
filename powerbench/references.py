@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from math import ceil
+
 from scipy.stats import binom, binomtest, chi2, f, ncf, nct, ncx2, norm, t
 
 from .schema import Scenario
@@ -433,7 +434,7 @@ def logistic_regression_power(
         se = (1 / information) ** 0.5
     if alternative == "two.sided":
         zcrit = norm.ppf(1 - alpha / 2)
-        return float(norm.cdf((-zcrit - beta / se)) + norm.sf(zcrit - beta / se))
+        return float(norm.cdf(-zcrit - beta / se) + norm.sf(zcrit - beta / se))
     zcrit = norm.ppf(1 - alpha)
     return float(norm.sf(zcrit - beta / se) if alternative == "greater" else norm.cdf(-zcrit - beta / se))
 
@@ -476,7 +477,7 @@ def poisson_regression_power(n: int, rate_ratio: float, baseline_rate: float, ex
     se = (1 / max(events0, 1e-12) + 1 / max(events1, 1e-12)) ** 0.5
     if alternative == "two.sided":
         zcrit = norm.ppf(1 - alpha / 2)
-        return float(norm.cdf((-zcrit - beta / se)) + norm.sf(zcrit - beta / se))
+        return float(norm.cdf(-zcrit - beta / se) + norm.sf(zcrit - beta / se))
     zcrit = norm.ppf(1 - alpha)
     return float(norm.sf(zcrit - beta / se) if alternative == "greater" else norm.cdf(-zcrit - beta / se))
 
@@ -620,7 +621,7 @@ def meta_analysis_fixed_power(studies: int, n_per_group: int, cohens_d: float, a
     se = (var_i / studies) ** 0.5
     if alternative == "two.sided":
         zcrit = norm.ppf(1 - alpha / 2)
-        return float(norm.cdf((-zcrit - cohens_d / se)) + norm.sf(zcrit - cohens_d / se))
+        return float(norm.cdf(-zcrit - cohens_d / se) + norm.sf(zcrit - cohens_d / se))
     zcrit = norm.ppf(1 - alpha)
     return float(norm.sf(zcrit - cohens_d / se) if alternative == "greater" else norm.cdf(-zcrit - cohens_d / se))
 
@@ -642,6 +643,8 @@ def required_n_meta_analysis_fixed(s: Scenario) -> dict[str, float | int | str]:
 
 
 def analytic_reference(s: Scenario) -> dict[str, float | int | str]:
+    if s.goal != "required_sample_size":
+        raise ValueError("Use powerbench.api.analyze with an explicit sample for fixed-N power or sensitivity")
     from .specialist_extras import (
         required_n_bayes_factor_t,
         required_n_group_sequential_t,

@@ -1,5 +1,9 @@
 # PowerBench
 
+The **0.9.0 candidate** adds portable goal-specific APIs, executable reproduction
+bundles, fixed-sample sensitivity and reusable review/reporting. It is not yet
+published. See [portable API and integration guide](docs/portable-api.md).
+
 **Statistical power analysis that shows its work.**
 
 PowerBench computes required sample sizes for 27 study designs. What distinguishes it is

@@ -2,9 +2,9 @@
 
 G*Power is the tool most psychology and social-science researchers actually use, which
 makes it the most valuable external comparison this project can carry. It is also a desktop
-GUI with no scriptable interface, so it is the one comparison that can never be automated.
+GUI without a command-line API. A separate Windows UI Automation driver can operate its controls; the serving adapter only reads committed captures.
 
-This is the protocol for recording one by hand in a way that stays trustworthy.
+This is the protocol for retaining a real manual or UI-automated run in a way that stays reviewable.
 
 ## What a capture is, and is not
 

@@ -1,0 +1,32 @@
+{
+  "scenario_id": "ancova_two_group_f020",
+  "method_id": "ancova",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "F tests - ANCOVA: Fixed effects, main effects and interactions",
+  "gui_inputs": {
+    "Effect size f": "0.2309401",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Numerator df": "1",
+    "Number of groups": "2",
+    "Number of covariates": "1",
+    "tails": null,
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 150,
+    "actual_power": 0.8023214,
+    "Noncentrality parameter λ": 7.9999995,
+    "Critical F": 3.9054981,
+    "Denominator df": 147
+  },
+  "scenario_hash_at_capture": "b84f4cf81f028bcf",
+  "screenshots": [],
+  "assumptions": [
+    "PowerBench declares an unadjusted f = 0.20 and inflates it by 1/sqrt(1 - R²) internally; this capture passes the equivalent adjusted f = 0.2309401 with 1 covariate so both tools test the same effect."
+  ],
+  "signature": "908fdacea11f7d93"
+}

@@ -7,10 +7,11 @@ from typing import Any
 
 import numpy as np
 from scipy.optimize import brentq
-from scipy.stats import cauchy, multivariate_normal, nct, norm, t as student_t
+from scipy.stats import cauchy, multivariate_normal, nct, norm
+from scipy.stats import t as student_t
 
+from .references import required_n_two_sample_t
 from .schema import Scenario
-from .references import required_n_two_sample_t, two_sample_t_power
 
 
 def equally_spaced_latent_category_probs(categories: int) -> list[float]:
@@ -88,7 +89,7 @@ def ordinal_proportional_odds_power(
     se = variance**0.5
     if alternative == "two.sided":
         zcrit = norm.ppf(1 - alpha / 2)
-        return float(norm.cdf((-zcrit - beta / se)) + norm.sf(zcrit - beta / se))
+        return float(norm.cdf(-zcrit - beta / se) + norm.sf(zcrit - beta / se))
     zcrit = norm.ppf(1 - alpha)
     return float(norm.sf(zcrit - beta / se) if alternative == "greater" else norm.cdf(-zcrit - beta / se))
 
@@ -382,10 +383,18 @@ def _meta_random_se(studies: int, n_per_group: int, cohens_d: float, tau: float)
 def _meta_hk_critical(studies: int, alpha: float, alternative: str) -> tuple[float, bool]:
     """Hartung-Knapp t critical with df = studies - 1 when studies > 2; otherwise z.
 
-    Hartung & Knapp (2001), Statistics in Medicine 20(12), 1771-1782 (doi:10.1002/sim.791);
-    IntHout, Ioannidis & Borm (2014), BMC Medical Research Methodology 14:25. The standard HK reference
-    distribution is t with k - 1 degrees of freedom. An earlier implementation used k - 2,
-    which is not the published convention and made the test slightly conservative.
+    Hartung & Knapp (2001), "On tests of the overall treatment effect in meta-analysis with
+    normally distributed responses", Statistics in Medicine 20(12), 1771-1782; IntHout,
+    Ioannidis & Borm (2014), BMC Medical Research Methodology 14:25. The standard HK
+    reference distribution is t with k - 1 degrees of freedom. An earlier implementation
+    used k - 2, which is not the published convention and made the test slightly
+    conservative.
+
+    The volume/pages here were wrong until 2026-08-06: they read 20(24), 3875-3889, which
+    is Hartung & Knapp's *other* 2001 paper, "A refined method for the meta-analysis of
+    controlled clinical trials with binary outcome". This method analyses standardized mean
+    differences (continuous), so the normally-distributed-responses paper is the correct
+    source and only its locator was mis-transcribed. Verified against PubMed 11406840.
     """
     use_hk = studies > 2
     if use_hk:

@@ -1,15 +1,20 @@
-"""G*Power comparisons, captured by a human and committed to the repository.
+"""G*Power comparisons, captured ahead of time and committed to the repository.
 
-G*Power is a desktop GUI with no scriptable interface, so it can never be run by an
-adapter. It is also the tool most psychology and social-science researchers actually use,
-which makes it the most valuable external comparison this project can carry and the one it
-cannot automate.
+G*Power is the tool most psychology and social-science researchers actually use, which
+makes it the most valuable external comparison this project can carry.
 
-The compromise is a recorded capture: a person runs G*Power, records the inputs they typed
-and the numbers it produced, saves a screenshot, and commits the record. This adapter reads
-those records and **never executes anything**.
+It has **no command-line interface**, and until 2026-08-06 this file said it therefore
+"can never be run by an adapter" and needed a human at the keyboard. That was wrong:
+G*Power is an MFC application whose controls are fully exposed to Windows UI Automation,
+and `tools/gpower/capture_scenarios.py` now drives it end to end.
 
-Two honesty problems follow from putting a human in the loop, and both are handled here:
+What has NOT changed is this adapter's contract. G*Power still needs a real interactive
+desktop, so it cannot run on Vercel or in CI; captures are generated locally and committed,
+exactly like the R adapters. **This adapter reads those records and never executes
+anything** — that separation is what keeps the serving path free of a GUI dependency.
+
+Two honesty problems follow from a capture being recorded ahead of time rather than
+computed on demand, and both are handled here:
 
 * A capture can drift from the scenario it claims to describe. If the scenario JSON changes
   after capture, the recorded numbers silently become a comparison against a design that no
@@ -28,11 +33,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .base import Adapter
 from ..parameterization import Parameterization
 from ..schema import Scenario
+from .base import Adapter
 
-CAPTURE_DIR = Path(__file__).parents[2] / "data" / "gpower_captures"
+CAPTURE_DIR = Path(__file__).parents[1] / "resources" / "gpower_captures"
 
 #: Fields that must be present for a capture to be usable at all.
 REQUIRED_FIELDS = (
@@ -129,8 +134,10 @@ class ManualGPowerAdapter(Adapter):
                 "status": "unsupported",
                 "adapter": self.id,
                 "reason": (
-                    "G*Power cannot be scripted, so this comparison needs a human capture. "
-                    "See docs/gpower_capture_protocol.md."
+                    "No committed G*Power capture for this scenario. Either G*Power has no "
+                    "design that expresses it (see UNMAPPABLE in tools/gpower/scenario_map.py "
+                    "for the per-scenario reason), or the capture has not been run yet: "
+                    "`python tools/gpower/capture_scenarios.py --list`."
                 ),
             }
 

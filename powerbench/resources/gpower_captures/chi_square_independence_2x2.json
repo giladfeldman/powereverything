@@ -1,0 +1,29 @@
+{
+  "scenario_id": "chi_square_independence_2x2",
+  "method_id": "chi_square_independence",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "χ² tests - Goodness-of-fit tests: Contingency tables",
+  "gui_inputs": {
+    "Effect size w": "0.4082483",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Df": "1",
+    "tails": null,
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 48,
+    "actual_power": 0.8074304,
+    "Noncentrality parameter λ": 8.0000004,
+    "Critical χ²": 3.8414588
+  },
+  "scenario_hash_at_capture": "3e28629c767ddfdb",
+  "screenshots": [],
+  "assumptions": [
+    "w is computed from the scenario's joint cell probabilities against the independence model; df = (rows-1)(cols-1) = 1."
+  ],
+  "signature": "53a4586c3473847b"
+}

@@ -1,0 +1,32 @@
+{
+  "id": "logistic_or15_p030",
+  "title": "Logistic OR = 1.5 with baseline risk 30%",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "logistic_regression",
+  "target_power": 0.8,
+  "effect": {
+    "odds_ratio": 1.5,
+    "p_baseline": 0.3,
+    "parameterization": "odds_ratio_at_baseline_risk"
+  },
+  "design": {
+    "predictor_type": "binary",
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Single binary predictor at 50% prevalence",
+    "Logistic link",
+    "No omitted confounders in the planned model"
+  ],
+  "status": "smoke"
+}

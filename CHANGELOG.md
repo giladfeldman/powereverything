@@ -10,7 +10,22 @@ version and only when a method's answers change. See
 
 ---
 
-## Unreleased
+## 0.9.0 — release candidate, not yet published
+
+- Adds versioned offline requests, fixed-N power and detectable-effect goals, default
+  target power .95 when omitted, provenance, executable scripts and checksummed bundles.
+- Moves scientific planning, reporting, comparison, conversions, review, external-tool
+  adjudication and resources into the public package. No application/DB dependency.
+- Includes packaged R adapters, scenarios, method attribution and signed G*Power captures.
+- Preserves explicit historical power .80 and existing required-N method versions.
+- Simulation policy 1.1 rejects invalid/resource-excessive inputs, freezes defaults/seed,
+  and retains out-of-domain sensitivity points as invalid rather than silently clipping.
+  Main-scenario formulas are unchanged. Legacy prose review no longer invents sidedness
+  or accepts a blanket two-percent N discrepancy as rounding.
+- R/WebR checks cover representative cases, not arbitrary designs. AI routing remains
+  disabled pending task-specific, expert-reviewed evaluation.
+
+## Earlier unreleased documentation changes
 
 **No computed answer changes.** Documentation only.
 

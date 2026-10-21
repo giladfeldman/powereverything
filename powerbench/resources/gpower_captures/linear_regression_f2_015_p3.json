@@ -1,0 +1,28 @@
+{
+  "scenario_id": "linear_regression_f2_015_p3",
+  "method_id": "linear_regression",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "F tests - Linear multiple regression: Fixed model, R² deviation from zero",
+  "gui_inputs": {
+    "Effect size f²": "0.15",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Number of predictors": "3",
+    "tails": null,
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 77,
+    "actual_power": 0.8017655,
+    "Noncentrality parameter λ": 11.55,
+    "Critical F": 2.7300187,
+    "Numerator df": 3,
+    "Denominator df": 73
+  },
+  "scenario_hash_at_capture": "5e1c7efa7d0209cb",
+  "screenshots": [],
+  "signature": "ee5e765ece89c3af"
+}

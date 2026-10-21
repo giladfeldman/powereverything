@@ -1,0 +1,32 @@
+{
+  "scenario_id": "moderation_interaction_f2_020",
+  "method_id": "moderation",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "F tests - Linear multiple regression: Fixed model, R² increase",
+  "gui_inputs": {
+    "Effect size f²": "0.02",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Number of tested predictors": "1",
+    "Total number of predictors": "3",
+    "tails": null,
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 395,
+    "actual_power": 0.8006159,
+    "Noncentrality parameter λ": 7.9,
+    "Critical F": 3.8653513,
+    "Numerator df": 1,
+    "Denominator df": 391
+  },
+  "scenario_hash_at_capture": "4b15ea26abce8d47",
+  "screenshots": [],
+  "assumptions": [
+    "The interaction term is tested as an R² increase of one predictor over the two main effects."
+  ],
+  "signature": "b63cf20c3d0a5ce1"
+}

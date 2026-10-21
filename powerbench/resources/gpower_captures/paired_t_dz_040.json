@@ -1,0 +1,26 @@
+{
+  "scenario_id": "paired_t_dz_040",
+  "method_id": "paired_t",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "t tests - Means: Difference between two dependent means (matched pairs)",
+  "gui_inputs": {
+    "Effect size dz": "0.40",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "tails": "Two",
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 52,
+    "actual_power": 0.8077878,
+    "Noncentrality parameter δ": 2.884441,
+    "Critical t": 2.0075838,
+    "Df": 51
+  },
+  "scenario_hash_at_capture": "f93932b5ff78d7f0",
+  "screenshots": [],
+  "signature": "3df4f028654a15a7"
+}

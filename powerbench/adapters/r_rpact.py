@@ -10,14 +10,14 @@ per arm after per-arm ceiling, exactly PowerBench's 200 total) for the committed
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import tempfile
+from pathlib import Path
 
-from .base import Adapter
-from .r_pwr import _resolve_rscript
 from ..parameterization import Parameterization
 from ..schema import Scenario
+from .base import Adapter
+from .r_pwr import _resolve_rscript
 
 _RPACT_PARAMETERIZATIONS: dict[str, Parameterization] = {
     "group_sequential_t": Parameterization(
@@ -43,7 +43,7 @@ class RRpactAdapter(Adapter):
 
     def __init__(self, rscript: str = "Rscript", script: str | Path | None = None):
         self.rscript = _resolve_rscript(rscript)
-        self.script = Path(script or Path(__file__).parents[2] / "tools" / "r" / "rpact_adapter.R")
+        self.script = Path(script or Path(__file__).parents[1] / "resources" / "r" / "rpact_adapter.R")
 
     def parameterization(self, method_id: str) -> Parameterization:
         return _RPACT_PARAMETERIZATIONS.get(method_id, Parameterization())

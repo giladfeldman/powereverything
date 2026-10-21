@@ -90,7 +90,7 @@ class Parameterization:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
-    def differing_fields(self, other: "Parameterization") -> list[str]:
+    def differing_fields(self, other: Parameterization) -> list[str]:
         """Declared fields where the two tools disagree.
 
         A field is only counted when *both* sides declared it. Comparing a declared value

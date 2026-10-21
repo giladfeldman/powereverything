@@ -1,0 +1,30 @@
+{
+  "id": "one_proportion_030_050",
+  "title": "One proportion: null .30, alternative .50, two-sided 80% power",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "one_sample_proportion",
+  "target_power": 0.8,
+  "effect": {
+    "p_null": 0.3,
+    "p_alternative": 0.5,
+    "parameterization": "null_and_alternative_proportion"
+  },
+  "design": {
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 10000,
+    "seed": 20260718
+  },
+  "assumptions": [
+    "Independent Bernoulli outcomes",
+    "Exact binomial test"
+  ],
+  "status": "certification"
+}

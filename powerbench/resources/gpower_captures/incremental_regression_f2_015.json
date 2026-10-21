@@ -1,0 +1,29 @@
+{
+  "scenario_id": "incremental_regression_f2_015",
+  "method_id": "incremental_regression",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "F tests - Linear multiple regression: Fixed model, R² increase",
+  "gui_inputs": {
+    "Effect size f²": "0.15",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Number of tested predictors": "1",
+    "Total number of predictors": "4",
+    "tails": null,
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 55,
+    "actual_power": 0.8042089,
+    "Noncentrality parameter λ": 8.25,
+    "Critical F": 4.0343097,
+    "Numerator df": 1,
+    "Denominator df": 50
+  },
+  "scenario_hash_at_capture": "2cc713857798845d",
+  "screenshots": [],
+  "signature": "ad7b24b95f1c59e6"
+}

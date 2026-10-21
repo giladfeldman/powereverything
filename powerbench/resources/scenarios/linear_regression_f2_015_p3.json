@@ -1,0 +1,31 @@
+{
+  "id": "linear_regression_f2_015_p3",
+  "title": "Overall linear regression: f2 = .15, 3 predictors, 80% power",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "linear_regression",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_f2": 0.15,
+    "parameterization": "cohens_f_squared"
+  },
+  "design": {
+    "predictors": 3,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 10000,
+    "seed": 20260718
+  },
+  "assumptions": [
+    "Overall model test",
+    "Fixed-design noncentral-F planning",
+    "Independent normal predictors and errors in simulation"
+  ],
+  "status": "certification"
+}

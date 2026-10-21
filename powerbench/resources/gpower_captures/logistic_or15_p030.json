@@ -1,0 +1,30 @@
+{
+  "scenario_id": "logistic_or15_p030",
+  "method_id": "logistic_regression",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "z tests - Logistic regression",
+  "gui_inputs": {
+    "Odds ratio": "1.5",
+    "Pr(Y=1|X=1) H0": "0.30",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "R² other X": "0",
+    "X parm π": "0.5",
+    "tails": "Two",
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 853,
+    "actual_power": 0.8001429,
+    "Critical z": 1.959964
+  },
+  "scenario_hash_at_capture": "be559ab8ff5c1307",
+  "screenshots": [],
+  "assumptions": [
+    "Binary predictor captured with G*Power's Binomial X distribution at π = 0.5 (balanced split) and no other covariates (R² other X = 0)."
+  ],
+  "signature": "fd0ad9d916d2e288"
+}

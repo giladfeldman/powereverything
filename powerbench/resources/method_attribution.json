@@ -1,0 +1,193 @@
+{
+  "methods": {
+    "two_sample_t": {
+      "formula": "Power of the pooled-variance two-sample t test from the noncentral t distribution with ncp = d * sqrt(n1*n2/(n1+n2)), df = n1+n2-2.",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "Exact noncentral-t; no normal approximation. Agrees with G*Power to 7 decimal places on actual power (N=200 at d=0.40).",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": ""
+    },
+    "welch_t": {
+      "formula": "Two-sample t power under unequal variances, with the Welch-Satterthwaite effective degrees of freedom.",
+      "source": "Welch, B. L. (1947). The generalization of 'Student's' problem when several different population variances are involved. Biometrika, 34(1-2), 28-35.",
+      "derivation_note": "Approximate: the Welch-Satterthwaite df is itself an approximation, so power is not the exact sampling distribution. G*Power offers no unequal-variance t test, so this method has no G*Power comparison.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "paired_t": {
+      "formula": "Noncentral t power for the mean change score, ncp = dz * sqrt(n), df = n-1.",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "Exact given dz (the standardized mean CHANGE, which already absorbs the within-pair correlation). Agrees exactly with G*Power (N=52 at dz=0.40).",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": ""
+    },
+    "one_sample_proportion": {
+      "formula": "Exact binomial power: the rejection region is enumerated under the null, then its probability evaluated under the alternative.",
+      "source": "Fleiss, J. L., Levin, B., & Paik, M. C. (2003). Statistical Methods for Rates and Proportions (3rd ed.), ch. 2. Wiley.",
+      "derivation_note": "Exact, and deliberately independent of any normal approximation: the rejection region of the exact binomial test is enumerated under the null and its probability evaluated under the alternative. Power is NON-MONOTONIC in n because that region moves in whole counts, so 'the required N' depends on the search stopping rule -- PowerBench reports the smallest n reaching the target. (This method was briefly attributed to Clopper & Pearson 1934 during authoring; that paper establishes exact binomial CONFIDENCE INTERVALS, not this power calculation.)",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": "docs/discrepancies/one_sample_proportion_sawtooth.md"
+    },
+    "two_sample_proportion": {
+      "formula": "Two-proportion z test with the pooled variance estimate under the null.",
+      "source": "Fleiss, J. L., Levin, B., & Paik, M. C. (2003). Statistical Methods for Rates and Proportions (3rd ed.). Wiley.",
+      "derivation_note": "Normal approximation to the binomial; no continuity correction. Agrees exactly with G*Power (N=186).",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "chi_square_gof": {
+      "formula": "Noncentral chi-square power for a multinomial goodness-of-fit test, ncp = n * w^2, df = categories - 1.",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "Approximate: the noncentral chi-square is the large-sample limit of the multinomial. Agrees with G*Power to 7 decimal places (N=181).",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "chi_square_independence": {
+      "formula": "Noncentral chi-square power for a contingency-table independence test, ncp = n * w^2, df = (rows-1)(cols-1).",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "The reported N also enforces a minimum expected cell count (default 5), which can bind BEFORE the power constraint. With that floor removed the search returns N=48, matching G*Power exactly; the committed answer of 50 is the smallest admissible design, not the smallest powered one.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": "docs/discrepancies/chi_square_independence_floor.md"
+    },
+    "one_way_anova": {
+      "formula": "Noncentral F power for the omnibus one-way ANOVA, ncp = n_total * f^2, df1 = k-1, df2 = n_total-k.",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "Exact for balanced groups under normality and homoscedasticity. Three-way exact agreement with G*Power and R pwr (N=159 at f=0.25, k=3).",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": ""
+    },
+    "factorial_anova": {
+      "formula": "Noncentral F power for one tested term of a balanced factorial design; df1 is the tested term's degrees of freedom.",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "Exact for a balanced design. For a 2x2 interaction df1 = (a-1)(b-1) = 1. Agrees exactly with G*Power (N=128).",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": ""
+    },
+    "ancova": {
+      "formula": "Noncentral F power for the treatment effect with one covariate; the residual variance is reduced by (1 - R^2) and one denominator df is spent.",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "PowerBench takes an UNADJUSTED f and inflates it internally by 1/sqrt(1 - R^2). G*Power instead expects an already-adjusted effect size. Passing the raw f to G*Power compares two different effect sizes; passing the adjusted value reproduces PowerBench exactly (N=150).",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": ""
+    },
+    "planned_contrast": {
+      "formula": "Noncentral F power for a single a-priori contrast with df1 = 1, using the contrast-specific effect size.",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "Tests one specified comparison, NOT the omnibus null. G*Power has no planned-contrast design, so no comparison is offered rather than mapping onto the omnibus ANOVA, which asks a different question.",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": ""
+    },
+    "linear_regression": {
+      "formula": "Noncentral F power for the overall regression R^2 against zero, ncp = f2 * n, df1 = predictors, df2 = n - predictors - 1.",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "Fixed-predictor (conditional) design. Agrees exactly with G*Power (N=77 at f2=0.15, 3 predictors).",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": "docs/discrepancies/fixed_vs_random_predictors.md"
+    },
+    "incremental_regression": {
+      "formula": "Noncentral F power for the R^2 increase of a tested predictor block over the remaining predictors.",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "Noncentrality follows the pwr.f2.test convention, ncp = (n - total + tested) * f2, rather than n * f2. G*Power uses the latter, which is why the two differ by a few observations (55 vs 58).",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": "docs/discrepancies/incremental_regression.md"
+    },
+    "moderation": {
+      "formula": "Noncentral F power for the interaction term entered as an R^2 increase of one predictor over the main effects.",
+      "source": "Aiken, L. S., & West, S. G. (1991). Multiple Regression: Testing and Interpreting Interactions. Sage.",
+      "derivation_note": "Same noncentrality convention as incremental_regression, so the same small offset against G*Power applies (395 vs 397). Assumes a fixed, perfectly reliable product term; measurement error in either component attenuates the interaction and inflates the true N required.",
+      "exact_or_approximate": "exact",
+      "discrepancy_doc": "docs/discrepancies/incremental_regression.md"
+    },
+    "logistic_regression": {
+      "formula": "Wald power for a single logistic coefficient; for a binary predictor the slope information is 1/(n*P0*p0*q0) + 1/(n*P1*p1*q1).",
+      "source": "Demidenko, E. (2007). Sample size determination for logistic regression revisited. Statistics in Medicine, 26(18), 3385-3397.",
+      "derivation_note": "Large-sample Wald approximation. An earlier implementation evaluated the binomial variance only at the baseline probability, which erred in BOTH directions depending on where the exposed group sat relative to p=0.5. Differs from G*Power by ~3 observations at OR=1.5 (853 vs 856).",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "poisson_regression": {
+      "formula": "Normal approximation for a Poisson log-rate coefficient with a balanced binary exposure; Wald variance 1/E0 + 1/E1.",
+      "source": "Signorini, D. F. (1991). Sample size for Poisson regression. Biometrika, 78(2), 446-450.",
+      "derivation_note": "Models a BINARY exposure, so the matching G*Power design uses its Binomial X distribution at pi=0.5, not the Normal default. Captured against Normal the comparison is meaningless (220 vs 796); captured correctly the gap is 9 observations (787 vs 796).",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": "docs/discrepancies/poisson_conservatism.md"
+    },
+    "correlation": {
+      "formula": "Fisher z transformation of r, with power from the normal distribution using SE = 1/sqrt(n-3).",
+      "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Lawrence Erlbaum.",
+      "derivation_note": "Approximate. G*Power's Exact bivariate-normal model computes the exact sampling distribution and consistently returns one observation fewer (84 vs 85 at rho=.30; 193 vs 194 at rho=.20). Both are defensible; the Fisher-z form is what R's pwr.r.test also reports.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "tost_equivalence": {
+      "formula": "Two one-sided tests: power that both one-sided t tests reject, establishing equivalence within the declared bounds.",
+      "source": "Schuirmann, D. J. (1987). A comparison of the two one-sided tests procedure and the power approach for assessing the equivalence of average bioavailability. Journal of Pharmacokinetics and Biopharmaceutics, 15(6), 657-680.",
+      "derivation_note": "Approximate. Tests a null of NON-equivalence, the opposite of a conventional t test, which is why G*Power's t-test module cannot express it.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "mediation_indirect": {
+      "formula": "Joint-significance power for the indirect effect a*b: the probability that both path tests reject.",
+      "source": "MacKinnon, D. P., Lockwood, C. M., Hoffman, J. M., West, S. G., & Sheets, V. (2002). A comparison of methods to test mediation and other intervening variable effects. Psychological Methods, 7(1), 83-104.",
+      "derivation_note": "The two path tests are asymptotically orthogonal in the recursive model, so the product form is used rather than a bivariate integral -- verified by simulation at n=118 (0.7877 joint vs 0.7885 product). Joint significance is not the same as a bootstrap confidence-interval test and can differ in small samples.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "meta_analysis_fixed": {
+      "formula": "Fixed-effect meta-analysis of standardized mean differences; the summary standard error is the inverse-variance weighted combination across k studies.",
+      "source": "Borenstein, M., Hedges, L. V., Higgins, J. P. T., & Rothstein, H. R. (2009). Introduction to Meta-Analysis. Wiley.",
+      "derivation_note": "Normal approximation. Assumes one common true effect, so power grows without bound in total N -- unlike the random-effects case.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "meta_analysis_random": {
+      "formula": "Random-effects meta-analysis of standardized mean differences using the Hartung-Knapp variance estimator with a t reference distribution on k-1 degrees of freedom.",
+      "source": "Hartung, J., & Knapp, G. (2001). On tests of the overall treatment effect in meta-analysis with normally distributed responses. Statistics in Medicine, 20(12), 1771-1782.",
+      "derivation_note": "df = k-1 is the published convention; an earlier implementation used k-2, which made the test slightly conservative. Between-study heterogeneity puts a CEILING on power, so the power curve is nearly flat and the required N is only weakly identified. See also IntHout, Ioannidis & Borm (2014), BMC Medical Research Methodology, 14:25.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": "docs/discrepancies/meta_analysis_random_flat_power.md"
+    },
+    "noninferiority_t": {
+      "formula": "One-sided t test of the difference against a shifted non-inferiority margin rather than against zero.",
+      "source": "Chow, S.-C., Shao, J., Wang, H., & Lokhnygina, Y. (2017). Sample Size Calculations in Clinical Research (3rd ed.). Chapman & Hall/CRC.",
+      "derivation_note": "Approximate. The shifted null is why G*Power's t-test module cannot express this design: a one-tailed test against zero is a different hypothesis.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "ordinal_regression": {
+      "formula": "Proportional-odds power for a binary predictor; Var(beta) = 3 / (n * (1 - sum_j pbar_j^3) * P1 * P2).",
+      "source": "Whitehead, J. (1993). Sample size calculations for ordered categorical data. Statistics in Medicine, 12(24), 2257-2271.",
+      "derivation_note": "Asymptotic variance of the log odds ratio, assuming the proportional-odds assumption holds. G*Power has no ordinal regression module.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "bayes_factor_t": {
+      "formula": "Design analysis for a JZS Bayes factor: the probability that BF10 exceeds the declared threshold, with a Cauchy prior on delta.",
+      "source": "Rouder, J. N., Speckman, P. L., Sun, D., Morey, R. D., & Iverson, G. (2009). Bayesian t tests for accepting and rejecting the null hypothesis. Psychonomic Bulletin & Review, 16(2), 225-237.",
+      "derivation_note": "Computed by fixed-node quadrature over the Cauchy prior (default scale r = 0.7071). This is a Bayesian design criterion, not a frequentist error rate, so it has no G*Power counterpart.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "group_sequential_t": {
+      "formula": "Group-sequential design with Lan-DeMets alpha spending approximating O'Brien-Fleming boundaries across the declared number of looks.",
+      "source": "Lan, K. K. G., & DeMets, D. L. (1983). Discrete sequential boundaries for clinical trials. Biometrika, 70(3), 659-663.",
+      "derivation_note": "Approximate. Inflates the maximum sample size relative to a fixed design in exchange for the option to stop early. G*Power has no interim-analysis module; gsDesign and rpact are the reference implementations.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "logrank_two_arm": {
+      "formula": "Schoenfeld's formula for the required number of EVENTS under a proportional-hazards alternative, converted to N by dividing by the event probability.",
+      "source": "Schoenfeld, D. A. (1983). Sample-size formula for the proportional-hazards regression model. Biometrics, 39(2), 499-503.",
+      "derivation_note": "Approximate, and assumes proportional hazards. The events-to-N conversion assumes the declared event probability applies to the whole trial; differential follow-up or censoring changes it. G*Power has no survival module.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    },
+    "rope_equivalence_t": {
+      "formula": "Bayesian ROPE decision rule: the probability that the posterior mass inside the region of practical equivalence exceeds the declared threshold, under a normal-normal conjugate model.",
+      "source": "Kruschke, J. K. (2018). Rejecting or accepting parameter values in Bayesian estimation. Advances in Methods and Practices in Psychological Science, 1(2), 270-280.",
+      "derivation_note": "A Bayesian decision criterion rather than a frequentist error rate. Depends on the declared prior SD, so it is not comparable to a frequentist equivalence test and has no G*Power counterpart.",
+      "exact_or_approximate": "approximate",
+      "discrepancy_doc": ""
+    }
+  }
+}

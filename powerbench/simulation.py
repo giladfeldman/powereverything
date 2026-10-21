@@ -3,8 +3,19 @@
 from __future__ import annotations
 
 from math import exp, log, sqrt
+
 import numpy as np
-from scipy.stats import binomtest, chi2_contingency, chisquare, f as f_distribution, f_oneway, norm, pearsonr, ttest_1samp, ttest_ind
+from scipy.stats import (
+    binomtest,
+    chi2_contingency,
+    chisquare,
+    f_oneway,
+    norm,
+    pearsonr,
+    ttest_1samp,
+    ttest_ind,
+)
+from scipy.stats import f as f_distribution
 
 from .schema import Scenario
 
@@ -589,7 +600,11 @@ def simulate(s: Scenario, n1: int | None = None, n2: int | None = None, n_total:
             if np.isfinite(pvalue): rejected += pvalue < alpha
             else: failed += 1
     elif s.model == "bayes_factor_t":
-        from powerbench.specialist_extras import _critical_t_for_bf, bic_bf10_from_t, jzs_bf10_from_t
+        from powerbench.specialist_extras import (
+            _critical_t_for_bf,
+            bic_bf10_from_t,
+            jzs_bf10_from_t,
+        )
 
         d = float(s.effect["cohens_d"])
         threshold = float(s.design.get("bf_threshold", 3))

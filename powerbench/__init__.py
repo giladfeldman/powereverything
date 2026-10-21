@@ -19,19 +19,19 @@ from .versioning import (
     method_version,
 )
 
-__version__ = "0.8.2"
+__version__ = "0.9.0"
 
 __all__ = [
-    "Scenario",
-    "load_scenario",
     "METHOD_CHANGELOG",
     "METHOD_VERSION",
     "METHOD_VERSIONS",
     "MethodChange",
+    "Scenario",
+    "__version__",
     "all_methods",
     "changes_since",
+    "load_scenario",
     "method_fingerprint",
     "method_version",
-    "__version__",
 ]
 

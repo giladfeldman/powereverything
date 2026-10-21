@@ -1,0 +1,33 @@
+{
+  "id": "two-sample-t-balanced-d-0.40",
+  "title": "Balanced pooled-variance two-sample t-test at d = 0.40",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "two_sample_t",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_d": 0.4,
+    "parameterization": "standardized_mean_difference"
+  },
+  "design": {
+    "allocation_ratio": 1.0,
+    "equal_variance": true,
+    "attrition_rate": 0.0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 5000,
+    "seed": 20260717
+  },
+  "assumptions": [
+    "Independent observations",
+    "Normal outcomes",
+    "Equal population variances",
+    "Effect size is the planning target rather than an observed estimate"
+  ],
+  "status": "smoke"
+}

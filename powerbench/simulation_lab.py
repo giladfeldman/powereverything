@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from math import sqrt
-from typing import Any, Callable
+from collections.abc import Callable
+from math import sqrt, isfinite
+from typing import Any
 
 import numpy as np
 from scipy.stats import norm, t, ttest_ind
-
 
 TEMPLATES: dict[str, dict[str, Any]] = {
     "clustered_continuous_two_arm": {
@@ -259,7 +259,7 @@ def _sem_two_mediators_once(rng: np.random.Generator, values: dict[str, float], 
     a2 = float(values["a2"]) * multiplier
     b = float(values["b"]) * multiplier
     direct = float(values["direct"])
-    corr = float(np.clip(values.get("residual_corr", 0.0), -0.95, 0.95))
+    corr = float(values.get("residual_corr", 0.0))
     x = rng.normal(0, 1, n)
     m1 = a1 * x + rng.normal(0, sd, n)
     residual_m2 = rng.normal(0, 1, n)
@@ -273,7 +273,7 @@ def _sem_two_mediators_once(rng: np.random.Generator, values: dict[str, float], 
     return max(p_a1, p_a2, p_b), preview
 
 
-def run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = None) -> dict[str, Any]:
+def _run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = None) -> dict[str, Any]:
     update = progress or (lambda _percent, _message: None)
     update(3, "Validating the study assumptions")
     template_id = str(payload.get("template_id", ""))
@@ -329,6 +329,8 @@ def run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = N
         pvalues, preview = [], []
         for _ in range(count):
             pvalue, rows = run_once(rng, values, effect)
+            if not isfinite(pvalue) or not 0 <= pvalue <= 1:
+                raise ValueError("A simulated fit returned an invalid p value; no complete result was produced.")
             pvalues.append(pvalue)
             if capture and not preview: preview = rows
         return float(np.mean(np.array(pvalues) < alpha)), preview
@@ -342,19 +344,76 @@ def run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = N
     for effect_multiplier in (.75, 1.0, 1.25):
         for sensitivity_multiplier in (.75, 1.0, 1.25):
             changed = dict(values); changed[sensitivity_key] = float(values[sensitivity_key]) * sensitivity_multiplier
-            if sensitivity_key in {"icc", "correlation", "covariate_outcome_r", "residual_corr"}:
-                lower = -.95 if sensitivity_key in {"covariate_outcome_r", "residual_corr"} else 0
-                changed[sensitivity_key] = float(np.clip(changed[sensitivity_key], lower, .95))
-            elif sensitivity_key == "p_control":
-                changed[sensitivity_key] = min(.999, changed[sensitivity_key])
+            bounded = {"icc": (0, 1), "correlation": (0, 1), "covariate_outcome_r": (-1, 1), "residual_corr": (-1, 1), "p_control": (0, 1)}
+            if sensitivity_key in bounded:
+                lower, upper = bounded[sensitivity_key]
+                candidate = changed[sensitivity_key]
+                if not lower <= candidate < upper or (lower == -1 and candidate == -1):
+                    grid.append({"effect_multiplier": effect_multiplier, "noise_multiplier": sensitivity_multiplier,
+                                 "status": "invalid", "reason": "Requested grid value is outside this parameter's domain; it was not clipped.", "power": None, "assumptions": changed})
+                    continue
             old_values = values; values = changed
             signal = effect_multiplier if template_id in path_multiplier_templates else float(changed[signal_key]) * effect_multiplier
             rate, _ = estimate(signal, grid_reps)
             values = old_values
-            grid.append({"effect_multiplier": effect_multiplier, "noise_multiplier": sensitivity_multiplier, "power": rate})
+            grid.append({"effect_multiplier": effect_multiplier, "noise_multiplier": sensitivity_multiplier, "status": "complete", "power": rate, "assumptions": changed})
             update(68 + int(27 * len(grid) / 9), f"Sensitivity scenario {len(grid)} of 9")
-    by_effect = max(row["power"] for row in grid if row["noise_multiplier"] == 1) - min(row["power"] for row in grid if row["noise_multiplier"] == 1)
-    by_noise = max(row["power"] for row in grid if row["effect_multiplier"] == 1) - min(row["power"] for row in grid if row["effect_multiplier"] == 1)
+    by_effect = max(row["power"] for row in grid if row["noise_multiplier"] == 1 and row["power"] is not None) - min(row["power"] for row in grid if row["noise_multiplier"] == 1 and row["power"] is not None)
+    by_noise = max(row["power"] for row in grid if row["effect_multiplier"] == 1 and row["power"] is not None) - min(row["power"] for row in grid if row["effect_multiplier"] == 1 and row["power"] is not None)
     driver = "effect size" if by_effect >= by_noise else sensitivity_key.replace("_", " ")
     update(98, "Preparing the explanation and results")
     return {"classification": "simulation_first_exemplar_not_universal_calculator", "template": {"id": template_id, "label": template["label"], "diagram": template["diagram"], "analysis_model": template["analysis_model"], "boundary": template["boundary"]}, "assumptions": values, "preview_dataset": preview, "power": power, "power_mc_ci95": _ci(power, reps), "type_i_error": type_i_error, "type_i_error_mc_ci95": _ci(type_i_error, reps), "replications": reps, "failures": 0, "sensitivity_grid": grid, "largest_observed_sensitivity_driver": driver}
+
+
+def normalize_simulation(payload: dict[str, Any]) -> dict[str, Any]:
+    """Freeze defaults/seed and bound resources before allocating generated data."""
+    if not isinstance(payload, dict) or payload.get("template_id") not in TEMPLATES:
+        raise ValueError("Choose a supported simulation template")
+    template_id = payload["template_id"]
+    defaults = TEMPLATES[template_id]["defaults"]
+    if set(payload) - set(defaults) - {"template_id", "alpha"}:
+        raise ValueError("Unrecognized simulation field")
+    values = {**defaults, "alpha": .05, **payload}
+    integer_keys = {"seed", "replications", "n", "n_per_arm", "n_per_cell", "clusters_per_arm", "cluster_size", "cluster_size_min", "cluster_size_max", "participants_per_arm", "occasions"}
+    for key, value in list(values.items()):
+        if key == "template_id":
+            continue
+        if isinstance(value, bool):
+            raise ValueError(f"{key} must be numeric")
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"{key} must be numeric") from error
+        if not isfinite(number):
+            raise ValueError(f"{key} must be finite")
+        if key in integer_keys:
+            minimum = 0 if key == "seed" else 1 if key in {"replications", "cluster_size", "cluster_size_min", "cluster_size_max"} else 2
+            maximum = 2**32 - 1 if key == "seed" else 20 if key == "occasions" else 10000
+            if not number.is_integer() or not minimum <= number <= maximum:
+                raise ValueError(f"{key} must be an integer in [{minimum}, {maximum}]")
+            values[key] = int(number)
+        else:
+            values[key] = number
+    if values.get("cluster_size_min", 0) > values.get("cluster_size_max", 10000):
+        raise ValueError("cluster_size_min exceeds cluster_size_max")
+    if any(values.get(key) == -1 for key in {"residual_corr", "covariate_outcome_r"}):
+        raise ValueError("Correlation must be strictly greater than -1")
+    size = values.get("n", values.get("n_per_arm", values.get("participants_per_arm", values.get("n_per_cell", values.get("clusters_per_arm", 1)))))
+    size *= values.get("cluster_size", values.get("cluster_size_max", 1)) * values.get("occasions", 1) * 4
+    reps = values["replications"]
+    if size * (2 * reps + 9 * min(300, reps)) > 25_000_000:
+        raise ValueError("Simulation exceeds the per-request generated-row budget; reduce sample size or replications")
+    return values
+
+
+def run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = None) -> dict[str, Any]:
+    """Run a bounded exemplar and include the full replay path."""
+    payload = normalize_simulation(payload)
+    result = _run(payload, progress)
+    from .provenance import provenance
+    from .reproducibility import python_script
+    normalized = {"operation": "simulate", "payload": payload}
+    result.update(schema_version="1.0", simulation_policy_version="1.1", status="complete", operation="simulate", normalized_request=normalized,
+                  provenance=provenance("simulation_lab:" + str(payload.get("template_id")), normalized, "1.1"),
+                  reproduction=[{"language": "python", "kind": "exact_reproduction", "code": python_script(normalized)}])
+    return result

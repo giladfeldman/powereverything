@@ -16,14 +16,14 @@ scenario's declared formula exactly.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import tempfile
+from pathlib import Path
 
-from .base import Adapter
-from .r_pwr import _resolve_rscript
 from ..parameterization import Parameterization
 from ..schema import Scenario
+from .base import Adapter
+from .r_pwr import _resolve_rscript
 
 _POWERSURVEPI_PARAMETERIZATIONS: dict[str, Parameterization] = {
     "welch_t": Parameterization(
@@ -46,7 +46,7 @@ class RPowerSurvEpiAdapter(Adapter):
 
     def __init__(self, rscript: str = "Rscript", script: str | Path | None = None):
         self.rscript = _resolve_rscript(rscript)
-        self.script = Path(script or Path(__file__).parents[2] / "tools" / "r" / "powersurvepi_adapter.R")
+        self.script = Path(script or Path(__file__).parents[1] / "resources" / "r" / "powersurvepi_adapter.R")
 
     def parameterization(self, method_id: str) -> Parameterization:
         return _POWERSURVEPI_PARAMETERIZATIONS.get(method_id, Parameterization())

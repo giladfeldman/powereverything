@@ -1,0 +1,31 @@
+{
+  "id": "meta_analysis_fixed_d030_k6",
+  "title": "Fixed-effect meta-analysis d=.30 across 6 studies",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "meta_analysis_fixed",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_d": 0.3,
+    "parameterization": "average_smd"
+  },
+  "design": {
+    "studies": 6,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Fixed-effect common true SMD",
+    "Equal two-group studies",
+    "Not a random-effects plan"
+  ],
+  "status": "smoke"
+}

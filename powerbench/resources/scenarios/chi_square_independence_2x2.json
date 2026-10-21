@@ -1,0 +1,43 @@
+{
+  "id": "chi_square_independence_2x2",
+  "title": "Chi-square independence 2x2 with w from joint probabilities",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "chi_square_independence",
+  "target_power": 0.8,
+  "effect": {
+    "joint_probabilities": [
+      [
+        0.4,
+        0.1
+      ],
+      [
+        0.2,
+        0.3
+      ]
+    ],
+    "parameterization": "joint_cell_probabilities"
+  },
+  "design": {
+    "rows": 2,
+    "cols": 2,
+    "min_expected_count": 5,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Independent observations",
+    "Fixed joint probabilities under the alternative",
+    "Omnibus chi-square independence test",
+    "Expected cell counts at least 5"
+  ],
+  "status": "smoke"
+}

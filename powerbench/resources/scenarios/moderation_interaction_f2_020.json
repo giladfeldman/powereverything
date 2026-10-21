@@ -1,0 +1,31 @@
+{
+  "id": "moderation_interaction_f2_020",
+  "title": "Moderation interaction incremental f2 = .02",
+  "framework": "frequentist",
+  "goal": "required_sample_size",
+  "model": "moderation",
+  "target_power": 0.8,
+  "effect": {
+    "cohens_f2": 0.02,
+    "parameterization": "incremental_interaction_f2"
+  },
+  "design": {
+    "total_predictors": 3,
+    "attrition_rate": 0
+  },
+  "decision_rule": {
+    "alpha": 0.05,
+    "alternative": "two.sided",
+    "multiplicity_method": "none"
+  },
+  "simulation": {
+    "replications": 2000,
+    "seed": 20260727
+  },
+  "assumptions": [
+    "Interaction is the focal one-df test",
+    "Predictors include focal, moderator, and product term",
+    "Normal residuals"
+  ],
+  "status": "smoke"
+}

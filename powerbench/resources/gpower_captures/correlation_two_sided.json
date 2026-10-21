@@ -1,0 +1,26 @@
+{
+  "scenario_id": "correlation-rho-0.20",
+  "method_id": "correlation",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "Exact - Correlation: Bivariate normal model",
+  "gui_inputs": {
+    "Correlation ρ H1": "0.20",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Correlation ρ H0": "0",
+    "tails": "Two",
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 193,
+    "actual_power": 0.8000846,
+    "Lower critical r": -0.1412906,
+    "Upper critical r": 0.1412906
+  },
+  "scenario_hash_at_capture": "d12e4d86e27da733",
+  "screenshots": [],
+  "signature": "84c62e266d339f33"
+}

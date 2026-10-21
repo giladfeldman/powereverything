@@ -1,0 +1,31 @@
+{
+  "scenario_id": "poisson_rr15_rate02",
+  "method_id": "poisson_regression",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "z tests - Poisson regression",
+  "gui_inputs": {
+    "Exp(β1)": "1.5",
+    "Base rate exp(β0)": "0.2",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Mean exposure": "1",
+    "R² other X": "0",
+    "X parm π": "0.5",
+    "tails": "Two",
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 787,
+    "actual_power": 0.8004706,
+    "Critical z": 1.959964
+  },
+  "scenario_hash_at_capture": "a394e5cac81e3a44",
+  "screenshots": [],
+  "assumptions": [
+    "Balanced binary exposure captured with G*Power's Binomial X distribution at π = 0.5, matching PowerBench's two-group Wald variance 1/E0 + 1/E1."
+  ],
+  "signature": "d0b73ad999c3b057"
+}

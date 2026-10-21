@@ -1,0 +1,31 @@
+{
+  "scenario_id": "factorial_anova_2x2_interaction",
+  "method_id": "factorial_anova",
+  "tool_version": "3.1.9.7",
+  "operating_system": "Windows 11",
+  "captured_on": "2026-08-06",
+  "captured_by": "automated:tools/gpower/capture_scenarios.py",
+  "gui_test_family": "F tests - ANOVA: Fixed effects, special, main effects and interactions",
+  "gui_inputs": {
+    "Effect size f": "0.25",
+    "α err prob": "0.05",
+    "Power": "0.80",
+    "Numerator df": "1",
+    "Number of groups": "4",
+    "tails": null,
+    "analysis": "A priori: Compute required sample size - given α, power, and effect size"
+  },
+  "gui_outputs": {
+    "total_sample_size": 128,
+    "actual_power": 0.8013621,
+    "Noncentrality parameter λ": 8,
+    "Critical F": 3.9175498,
+    "Denominator df": 124
+  },
+  "scenario_hash_at_capture": "435bad8b4bf1469c",
+  "screenshots": [],
+  "assumptions": [
+    "2x2 interaction: numerator df = (2-1)(2-1) = 1 across 4 cells."
+  ],
+  "signature": "fce3ead9be0cd663"
+}
