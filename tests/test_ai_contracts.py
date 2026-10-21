@@ -58,3 +58,15 @@ def test_request_draft_never_invents_alpha_target_or_design_defaults():
     assert draft['request']['scenario']['decision_rule']['alpha'] is None
     assert draft['request']['scenario']['design']['allocation_ratio'] is None
     assert 'multiplicity_method' in draft['missing_fields']
+
+
+def test_extraction_replay_also_reproduces_no_default_editor_draft():
+    import json
+    import subprocess
+    import sys
+
+    from powerbench.review.assistant import assistance_record
+    text='A paired t test was planned.'
+    result=assistance_record('extraction',text,{'has_power_analysis':True,'analyses':[{'fields':{'model':{'value':'paired_t','quote':'paired t test','start':2,'end':15,'status':'reported'}}}]})
+    replay=subprocess.run([sys.executable,'-c',result['reproduction'][0]['code']],capture_output=True,text=True,check=True,timeout=120)
+    assert json.loads(replay.stdout)['analyses']==result['analyses']

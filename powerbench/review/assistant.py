@@ -138,7 +138,18 @@ def assistance_record(task: str, text: str, proposed: dict, confirmed: dict | No
         for analysis in validated["analyses"]:
             analysis["editor_draft"] = request_from_proposal(analysis)
     inputs = {"task": task, "text": text, "proposed": proposed, "confirmed": confirmed}
-    code = "# Deterministic validation replay, not a claim to reproduce hosted model generation.\n# python -m pip install powerbench=="+__version__+"\nimport json\nfrom powerbench.review.assistant import validate_assistance, request_from_proposal\ninputs=json.loads("+repr(json.dumps(inputs, ensure_ascii=False, allow_nan=False))+")\nresult=validate_assistance(**inputs)\nif inputs["task"]=="extraction":\n for analysis in result["analyses"]: analysis["editor_draft"]=request_from_proposal(analysis)\nprint(json.dumps(result,indent=2,ensure_ascii=False,allow_nan=False))\n"
+    code = (
+        "# Deterministic parser replay; hosted generation is non-deterministic.\n"
+        f"# python -m pip install powerbench=={__version__}\n"
+        "import json\n"
+        "from powerbench.review.assistant import validate_assistance, request_from_proposal\n"
+        "inputs=json.loads(" + repr(json.dumps(inputs, ensure_ascii=False, allow_nan=False)) + ")\n"
+        "result=validate_assistance(**inputs)\n"
+        "if inputs['task']=='extraction':\n"
+        "    for analysis in result['analyses']:\n"
+        "        analysis['editor_draft']=request_from_proposal(analysis)\n"
+        "print(json.dumps(result,indent=2,ensure_ascii=False,allow_nan=False))\n"
+    )
     allowed = {key: metadata[key] for key in ("provider", "actual_model", "settings", "evaluated_route_version", "execution_date") if isinstance(metadata, dict) and key in metadata}
     return {**validated, "schema_version": "1.0", "ai_execution": allowed, "prompt_sha256": input_hash(prompt), "source_sha256": input_hash(text), "public_prompt": prompt, "raw_proposal": proposed, "reproduction": [{"language": "python", "kind": "deterministic_validation_replay", "code": code}], "inference_reproducibility": "Exact request and parser are exposed. Hosted model generation is non-deterministic and may change with the provider; this record is not scientific certification."}
 

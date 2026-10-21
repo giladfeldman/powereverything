@@ -12,7 +12,7 @@ from scipy.stats import t as student_t
 
 from .references import required_n_two_sample_t
 from .schema import Scenario
-from .search import check_search_budget
+from .search import SearchBudgetExceeded, check_search_budget
 
 
 def equally_spaced_latent_category_probs(categories: int) -> list[float]:
@@ -312,6 +312,8 @@ def group_sequential_boundaries(looks: int, alpha: float, alternative: str = "tw
 
         try:
             bound = float(brentq(lambda b, spent_increment=increment: exit_probability(b) - spent_increment, 0.5, 12.0, xtol=1e-6, maxiter=100))
+        except SearchBudgetExceeded:
+            raise
         except ValueError as error:
             raise ValueError("Could not calibrate sequential boundaries; no fallback design was substituted") from error
         boundaries.append(bound)
