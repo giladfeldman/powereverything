@@ -29,16 +29,29 @@ version and only when a method's answers change. See
 - Sequential method 2.2.0 uses seeded bounded QMC and integer minimality search;
   balanced d=.4, alpha=.05 and target .80 changes from total N=200 to 198.
   Requested integration tolerances are not certified error bounds.
-- Log-rank method 1.3.0 evaluates actual integer arm allocation and reweights
+- Log-rank method 1.4.0 evaluates actual integer arm allocation and reweights
   hazard-derived event probabilities at that allocation. A supplied aggregate event
   probability remains a declared constant. Nominal and realized probabilities are explicit.
+  Search checks all smaller totals within its documented rounded/clamped allocation rule:
+  a reproduced extreme ratio/low-target case changes N=455 to N=4 under that rule.
+  The report states the normal approximation and the realized ratio.
 - Recruitment rounds within declared arms/cells using decimal attrition rates;
   100 analysable participants in each arm with .10 attrition requires 112 recruits
   per arm (224 total), rather than pooled rounding to 223.
+- Welch and paired t methods 1.1.0, mediation 2.1.0 and random-effects meta-analysis
+  2.1.0 use reflected, finite-checked noncentral-t tails. Previously nonfinite extreme
+  cases now evaluate without silently terminating/skipping search candidates.
+  A 120-case R stats grid covers integer/fractional df, signed effects and directions.
+- Review policy 1.2 supports explicit calculation without a reported-value comparison.
+  It preserves the review input-completeness checks and never invents a reported number.
+  The wizard's fixed-power request leaves an omitted target null; explicit targets remain.
 - Public AI contracts expose exact prompts, conservative source/argument checks,
   parser fingerprints and validation replay. Rewrite proposals bind to the hash of
   an unchanged confirmed record. Anonymous exports retain only allowlisted neutral
-  software version pins, excluding platform/build identity and execution timestamps.
+  software version pins from the verified replay, excluding platform/build identity and
+  execution timestamps. Code proposals use Python AST/restricted R literal-call parsing;
+  expressions, comments and multiple calls cannot masquerade as literal arguments.
+  Numeric/text screening still does not certify prose equivalence or source correctness.
 - Simulation policy 1.3 rejects invalid/resource-excessive inputs, freezes defaults/seed,
   and retains out-of-domain sensitivity points as invalid rather than silently clipping.
   Main-scenario formulas are unchanged. Legacy prose review no longer invents sidedness

@@ -4,13 +4,21 @@ from math import isclose
 
 NUMBER=r"(?<![\w.\-+−–—])[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?"
 
+def numeric_claims(text):
+    normalized=text.replace('−','-').replace('–','-').replace('—','-')
+    normalized=re.sub(r'(?<=\d)-(?=[.\d])',' -',normalized)
+    normalized=re.sub(r'(?<![\w.])\d{1,3}(?:,\d{3})+(?:\.\d+)?',lambda match:match.group().replace(',',''),normalized)
+    return [(float(match.group()),bool(re.match(r'\s*(?:%|percent\b)',normalized[match.end():],re.I))) for match in re.finditer(NUMBER,normalized)]
+
+
 def numeric_tokens(text):
-    normalized=text.replace('−','-')
-    normalized=re.sub(r'(?<![\w\d])[–—](?=[.\d])','-',normalized)
-    return [float(token) for token in re.findall(NUMBER,normalized)]
+    return [value for value,_ in numeric_claims(text)]
 
 def lexical_support(name,value,quote):
     if not isinstance(quote,str):return False
+    if name=='model' and value=='two_sample_t' and re.search(r'\bwelch\b',quote,re.I):return False
+    if name=='model' and value=='welch_t' and re.search(r'\b(?:not|never|no)\b.{0,25}\bwelch\b|\bwelch\b.{0,25}\b(?:not|never)\b',quote,re.I):return False
+    if name=='effect_metric' and value=='cohens_f':return bool(re.search(r'\bcohens_f\b|\bcohen[’\']?s?\s+f\b',quote,re.I) or re.search(r'\bf\s*=',quote))
     patterns={
       'alternative':{'two.sided':r'\btwo[ -](?:sided|tailed)\b','greater':r'\b(?:greater|upper[ -]tailed|positive direction)\b','less':r'\b(?:less|lower[ -]tailed|negative direction)\b'},
       'multiplicity_method':{'none':r'\b(?:none|unadjusted|no (?:multiplicity |multiple.testing )?adjustment|single primary test)\b','bonferroni':r'\bbonferroni\b','hochberg':r'\bhochberg\b'},
@@ -30,35 +38,98 @@ def lexical_support(name,value,quote):
     return True
 
 
+_NUMBER_LITERAL=r'([-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?)'
+_NUMBER_LABELS={
+ 'alpha':r'alpha|α|significance\s+(?:level|threshold)',
+ 'target_power':r'(?:target(?:ed)?|desired|planned)\s+power|power',
+ 'attrition_rate':r'attrition|dropout|loss(?:es)?(?:\s+to\s+follow.up)?',
+ 'effect':r'effect(?:\s+(?:size|d|dz|rho|f2|f²|f))?|cohens_dz|cohens_d|cohens_f2|cohens_f|mean\s+difference|rho|d|dz|f2|f²|r',
+ 'reported_n':r'reported\s+(?:total\s+)?analysable\s+sample|total\s+(?:analysable\s+)?sample|sample\s+size|total\s+N|N|n',
+ 'allocation_ratio':r'allocation\s+ratio|ratio',
+ 'family_alpha':r'family\s+alpha|familywise\s+alpha',
+ 'primary_tests':r'primary\s+tests|primary\s+hypotheses',
+ 'groups':r'groups|number\s+of\s+groups',
+ 'predictors':r'predictors|number\s+of\s+predictors',
+ 'total_predictors':r'total\s+predictors|full.model\s+predictors',
+ 'tested_predictors':r'tested\s+predictors|tested\s+block\s+size',
+ 'studies':r'studies|number\s+of\s+studies',
+ 'tau':r'tau|τ', 'looks':r'looks|interim\s+analyses', 'categories':r'categories',
+ 'sd_group1':r'sd_group1|sd1|group\s+1\s+(?:SD|standard\s+deviation)',
+ 'sd_group2':r'sd_group2|sd2|group\s+2\s+(?:SD|standard\s+deviation)',
+}
+
+
+def labeled_numbers(name,quote):
+    label=_NUMBER_LABELS.get(name)
+    if not label or not isinstance(quote,str):return []
+    text=quote.replace('−','-')
+    if name=='alpha' and re.search(r'cronbach|coefficient\s+alpha|reliability',text,re.I):return []
+    pattern=r'(?<!\w)(?:'+label+r')(?!\w)\s*(?:(?:was|is|of|at|rate|level|set|to|equal|equals)\s*|[=:]){0,4}\s*'+_NUMBER_LITERAL+r'\s*(%|percent\b)?(?!\w|\.\d)'
+    values=[]
+    for match in re.finditer(pattern,text,re.I):
+        # Reject a numeric prefix of an unevaluated expression or range.
+        if re.match(r'\s*[/*+−–—:]|\s*-(?=\s*[.\d])',text[match.end():]):continue
+        if name=='target_power' and re.search(r'\b(?:observed|achieved|post[ -]?hoc)\s*$',text[max(0,match.start()-25):match.start()],re.I):continue
+        values.append(float(match.group(1))/(100 if match.group(2) else 1))
+    return values
+
+
 def anchored_number(name,value,quote):
-    patterns={'alpha':r'\b(?:alpha|α|significance\s+(?:level|threshold))\b','target_power':r'\b(?:target\s+)?power\b','attrition_rate':r'\b(?:attrition|dropout|loss(?:es)?(?:\s+to\s+follow.up)?)\b'}
-    if name not in patterns:return True
-    number=r'([-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?)'
-    matches=re.finditer(patterns[name]+r'\s*(?:(?:was|is|of|at|rate|level|set|to|equal|equals)\s*|[=:]){0,4}\s*'+number+r'\s*(%|percent)?',quote,re.IGNORECASE)
-    return any(isclose(float(m.group(1))/(100 if m.group(2) else 1),value,rel_tol=1e-10,abs_tol=1e-12) for m in matches)
+    return any(isclose(number,value,rel_tol=1e-10,abs_tol=1e-12) for number in labeled_numbers(name,quote))
 
 
 def code_support(name,value,quote):
-    if not isinstance(quote,str):return False
-    if name=='model':
-        return isinstance(value,str) and value in {'two_sample_t','welch_t','paired_t','correlation','one_way_anova','linear_regression','incremental_regression'} and lexical_support(name,value,quote)
-    if name in {'n_per_group','effect','alpha'}:
-        argument_names={'n_per_group':r'n|nobs1','effect':r'd|effect_size','alpha':r'sig\.level|alpha'}[name]
-        number=r'([-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?)'
-        matches=re.finditer(r'(?<![\w.])(?:'+argument_names+r')\s*=\s*'+number+r'(?![\w.])',quote.replace('−','-'))
-        if not any(isinstance(value,(int,float)) and not isinstance(value,bool) and isclose(float(match.group(1)),value,rel_tol=1e-10,abs_tol=1e-12) for match in matches):return False
-        if name=='n_per_group':
-            # A paired n counts pairs. Unequal-group nobs1 is group 1, not a
-            # common per-group count. Require both function and explicit units.
-            r_balanced=bool(re.search(r'pwr\.t\.test\s*\(',quote) and re.search(r'type\s*=\s*[\'"]two\.sample[\'"]',quote))
-            ratio=re.search(r'\bratio\s*=\s*'+number+r'(?![\w.])',quote)
-            py_balanced=bool('TTestIndPower' in quote and ratio and float(ratio.group(1))==1)
-            return r_balanced or py_balanced
-        return True
-    if name=='goal':
-        if not isinstance(value,str):return False
-        if value=='achieved_power':return bool(re.search(r'pwr\.[\w.]+\([^\n]*\bn\s*=\s*[.\d]|\.power\s*\([^\n]*\bnobs1\s*=\s*[.\d]',quote,re.IGNORECASE))
-        if value=='required_sample_size':return bool(re.search(r'\b(?:n|nobs1)\s*=\s*(?:NULL|None)\b',quote))
-        if value=='sensitivity':return bool(re.search(r'\b(?:d|effect_size)\s*=\s*(?:NULL|None)\b',quote))
-        return False
+    from .code_source import literal_power_call
+    parsed=literal_power_call(quote)
+    expected=parsed.get(name)
+    if expected is None or value is None:return False
+    if isinstance(expected,(int,float)):
+        return isinstance(value,(int,float)) and not isinstance(value,bool) and isclose(expected,value,rel_tol=1e-10,abs_tol=1e-12)
+    return isinstance(value,str) and value==expected
+
+
+def finding_supported(code,quote,text):
+    if not isinstance(quote,str) or len(re.findall(r"\w+",quote))<3:return False
+    if code=='observed_effect_posthoc':
+        return bool(re.search(r'\bobserved\b',quote,re.I) and re.search(r'post[ -]?hoc|after (?:data )?collection|observed (?:study )?effects?',quote,re.I))
+    if code in {'missing_alpha','missing_target_power','missing_attrition'}:
+        field={'missing_alpha':'alpha','missing_target_power':'target_power','missing_attrition':'attrition_rate'}[code]
+        return not labeled_numbers(field,text)
+    if code=='missing_sidedness':return not re.search(r'\b(?:two[ -]sided|two[ -]tailed|one[ -]sided|one[ -]tailed|greater|less)\b',text,re.I)
+    if code=='missing_allocation':return not (labeled_numbers('allocation_ratio',text) or re.search(r'\bequal\s+(?:allocation|between groups)|allocation was equal|balanced (?:groups|allocation)',text,re.I))
+    if code=='missing_effect_rationale':return not re.search(r'(?:effect rationale|smallest effect of interest|prior evidence|previous research)',text,re.I)
+    if code=='per_group_vs_total':
+        from .code_source import literal_power_call
+        n=literal_power_call(quote).get('n_per_group')
+        match=re.search(r'(?:manuscript|reported|reports).*?\btotal\s+N\s*[=:]\s*(\d+)',quote,re.I|re.S)
+        return isinstance(n,(int,float)) and bool(match) and int(match.group(1))!=2*n
+    if code=='missing_seed_for_simulation':return bool(re.search(r'simulat|rnorm|runif|random\.',quote,re.I) and not re.search(r'set\.seed|random_state|default_rng|seed\s*[=(]',text,re.I))
+    if code=='unreported_decision_rule':return not re.search(r'sig\.level\s*=|\balpha\s*=|\bconfidence\s*=',text,re.I)
+    if code=='unsupported_or_ambiguous_code':
+        from .code_source import literal_power_call
+        return not bool(literal_power_call(quote))
+    return code=='analysis_match_unresolved'
+
+
+def rewrite_labels_match(paragraph,confirmed):
+    request=confirmed.get('canonical_request',{})
+    scenario=request.get('scenario',{}) if isinstance(request,dict) else {}
+    scenario=scenario if isinstance(scenario,dict) else {}
+    effect=scenario.get('effect',{})
+    effect=effect if isinstance(effect,dict) else {}
+    rule=scenario.get('decision_rule',{})
+    rule=rule if isinstance(rule,dict) else {}
+    result=confirmed.get('canonical_result',{})
+    expectations={
+      'effect':[confirmed.get('effect'),*(effect.get(key) for key in ('cohens_d','cohens_dz','rho','cohens_f','cohens_f2','mean_difference')),result.get('detectable_effect') if isinstance(result,dict) else None],
+      'alpha':[confirmed.get('alpha'),rule.get('alpha')],
+      'target_power':[confirmed.get('target_power'),scenario.get('target_power')],
+      'reported_n':[confirmed.get('n'),confirmed.get('reported_n'),*(result.get(key) for key in ('n_total','n1','n2','n_per_group'))] if isinstance(result,dict) else [],
+    }
+    canonical=confirmed.get('canonical_paragraph','')
+    for field,values in expectations.items():
+        allowed=[value for value in values if isinstance(value,(int,float)) and not isinstance(value,bool)]
+        allowed+=labeled_numbers(field,canonical)
+        for claim in labeled_numbers(field,paragraph):
+            if allowed and not any(isclose(claim,value,rel_tol=1e-10,abs_tol=1e-12) for value in allowed):return False
     return True

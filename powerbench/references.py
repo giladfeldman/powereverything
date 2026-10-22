@@ -10,10 +10,7 @@ from .schema import Scenario
 from .search import check_search_budget, search_budget
 
 
-def two_sample_t_power(n1: int, n2: int, d: float, alpha: float, alternative: str) -> float:
-    """Exact noncentral-t power for Student's pooled-variance two-sample t-test."""
-    df = n1 + n2 - 2
-    ncp = d / (1 / n1 + 1 / n2) ** 0.5
+def _noncentral_t_power(df: float, ncp: float, alpha: float, alternative: str) -> float:
     # Reflection gives P(T_delta < -c) = P(T_-delta > c). The sf
     # representation avoids SciPy cdf NaNs in tiny extreme-effect lower tails.
     if alternative == "two.sided":
@@ -25,6 +22,14 @@ def two_sample_t_power(n1: int, n2: int, d: float, alpha: float, alternative: st
     if not isfinite(probability) or not 0 <= probability <= 1:
         raise ValueError("Noncentral-t power evaluation failed; search cannot use a nonfinite probability")
     return probability
+
+
+
+def two_sample_t_power(n1: int, n2: int, d: float, alpha: float, alternative: str) -> float:
+    """Exact noncentral-t power for Student's pooled-variance two-sample t-test."""
+    df = n1 + n2 - 2
+    ncp = d / (1 / n1 + 1 / n2) ** 0.5
+    return _noncentral_t_power(df,ncp,alpha,alternative)
 
 
 def required_n_two_sample_t(s: Scenario) -> dict[str, float | int | str]:
@@ -66,11 +71,7 @@ def welch_t_power(n1: int, n2: int, mean_difference: float, sd_group1: float, sd
     variance = sd_group1**2 / n1 + sd_group2**2 / n2
     df = variance**2 / ((sd_group1**2 / n1) ** 2 / (n1 - 1) + (sd_group2**2 / n2) ** 2 / (n2 - 1))
     ncp = mean_difference / variance**0.5
-    if alternative == "two.sided":
-        critical = t.ppf(1 - alpha / 2, df)
-        return float(nct.cdf(-critical, df, ncp) + nct.sf(critical, df, ncp))
-    critical = t.ppf(1 - alpha, df)
-    return float(nct.sf(critical, df, ncp) if alternative == "greater" else nct.cdf(-critical, df, ncp))
+    return _noncentral_t_power(df,ncp,alpha,alternative)
 
 
 def required_n_welch_t(s: Scenario) -> dict[str, float | int | str]:
@@ -97,11 +98,7 @@ def required_n_welch_t(s: Scenario) -> dict[str, float | int | str]:
 def paired_t_power(n: int, dz: float, alpha: float, alternative: str) -> float:
     """Exact noncentral-t power for a t-test of standardized within-person change."""
     df, ncp = n - 1, dz * n**0.5
-    if alternative == "two.sided":
-        critical = t.ppf(1 - alpha / 2, df)
-        return float(nct.cdf(-critical, df, ncp) + nct.sf(critical, df, ncp))
-    critical = t.ppf(1 - alpha, df)
-    return float(nct.sf(critical, df, ncp) if alternative == "greater" else nct.cdf(-critical, df, ncp))
+    return _noncentral_t_power(df,ncp,alpha,alternative)
 
 
 def required_n_paired_t(s: Scenario) -> dict[str, float | int | str]:
@@ -609,14 +606,8 @@ def mediation_indirect_power(
         return 0.0
     se_a = residual_sd_m / (sd_x * (n - 2) ** 0.5)
     se_b = residual_sd_y / (residual_sd_m * (n - 3) ** 0.5)
-    critical_a = t.ppf(1 - alpha / 2, n - 2)
-    critical_b = t.ppf(1 - alpha / 2, n - 3)
-    power_a = float(
-        nct.sf(critical_a, n - 2, abs(a_path) / se_a) + nct.cdf(-critical_a, n - 2, abs(a_path) / se_a)
-    )
-    power_b = float(
-        nct.sf(critical_b, n - 3, abs(b_path) / se_b) + nct.cdf(-critical_b, n - 3, abs(b_path) / se_b)
-    )
+    power_a = _noncentral_t_power(n-2,abs(a_path)/se_a,alpha,"two.sided")
+    power_b = _noncentral_t_power(n-3,abs(b_path)/se_b,alpha,"two.sided")
     return float(power_a * power_b)
 
 

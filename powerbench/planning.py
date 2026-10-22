@@ -531,7 +531,10 @@ def analyze_fields(payload: dict[str, Any]) -> dict[str, Any]:
     scenario, *_ = scenario_from_fields(source)
     if goal == "achieved_power" and payload.get("effect") in (0, "0", "0.0"):
         scenario = replace(scenario, effect={**scenario.effect, FIXED_MODELS[model]: 0.0})
-    scenario = replace(scenario, goal=goal)
+    # The temporary target validates the legacy required-N field parser only.
+    # Fixed-power requests retain a target solely when the caller supplied it.
+    target = None if goal == "achieved_power" and payload.get("target_power") in (None, "") else scenario.target_power
+    scenario = replace(scenario, goal=goal, target_power=target)
     return analyze({"operation": "power" if goal == "achieved_power" else "detectable_effect", "scenario": scenario.to_dict(), "sample": sample})
 
 

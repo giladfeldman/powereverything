@@ -11,7 +11,7 @@ from scipy.optimize import brentq
 from scipy.stats import chi2, multivariate_normal, nct, norm
 from scipy.stats import t as student_t
 
-from .references import required_n_two_sample_t
+from .references import required_n_two_sample_t, _noncentral_t_power
 from .schema import Scenario
 from .search import SearchBudgetExceeded, check_search_budget
 
@@ -255,7 +255,7 @@ def required_n_bayes_factor_t(s: Scenario) -> dict[str, float | int | str]:
         "degrees_freedom": int(n1 + n2 - 2),
         "method": label,
         "search_domain": {"minimum_n1": 10, "minimum_n2": 10, "interpretation": "Minimum within the declared search domain, not across smaller samples."},
-        "integration": {"method": "adaptive_full_cauchy_halfnormal_mixture" if method == "jzs" else "closed_form_BIC", "requested_relative_tolerance": 1e-8, "critical_t_tolerance": 1e-3},
+        "integration": {"method": "adaptive_full_cauchy_halfnormal_mixture" if method == "jzs" else "closed_form_BIC", "prior_requested_absolute_tolerance": 1e-10, "prior_requested_relative_tolerance": 1e-9, "prior_error_acceptance": "max(1e-10, 1e-6 * scaled_integral)", "conditional_power_requested_absolute_tolerance": 1e-9, "conditional_power_requested_relative_tolerance": 1e-8, "conditional_power_error_acceptance": 1e-6, "critical_t_tolerance": 1e-3},
     }
 
 
@@ -484,12 +484,7 @@ def meta_analysis_random_power(
             return float(norm.cdf(-crit - noncentrality) + norm.sf(crit - noncentrality))
         return float(norm.sf(crit - noncentrality) if alternative == "greater" else norm.cdf(-crit - noncentrality))
 
-    df = studies - 1
-    if alternative == "two.sided":
-        return float(nct.sf(crit, df, noncentrality) + nct.cdf(-crit, df, noncentrality))
-    if alternative == "greater":
-        return float(nct.sf(crit, df, noncentrality))
-    return float(nct.cdf(-crit, df, noncentrality))
+    return _noncentral_t_power(studies-1,noncentrality,alpha,alternative)
 
 
 def required_n_meta_analysis_random(s: Scenario) -> dict[str, Any]:
@@ -710,9 +705,14 @@ def required_n_logrank_two_arm(s: Scenario) -> dict[str, Any]:
         n_total += 1
         if n_total > 1_000_000:
             raise RuntimeError("Could not bracket log-rank sample size")
-    while n_total>4 and discrete_power(n_total-1)>=target:
+    # Rounded allocation with arm-specific event risks can be non-monotone.
+    # A local downward walk is insufficient: scan every smaller feasible total
+    # under the declared allocation rule, with the shared time/step budget.
+    for candidate in range(4,n_total):
         check_search_budget()
-        n_total-=1
+        if discrete_power(candidate)>=target:
+            n_total=candidate
+            break
     n1, n2 = split(n_total)
     realized_p_event=event_probability(n_total)
     return {
@@ -727,6 +727,7 @@ def required_n_logrank_two_arm(s: Scenario) -> dict[str, Any]:
         "requested_allocation_ratio": ratio,
         "realized_allocation_ratio": n2/n1,
         "method": "schoenfeld_logrank_events_then_n_over_p_event",
+        "search_domain": {"minimum_n_total":4,"minimum_n_per_arm":2,"allocation_rule":"Round group 1 to nearest integer, then clamp to at least two observations per arm.","interpretation":"Minimum within the declared rounded/clamped allocation rule; inspect the realized ratio, especially at small samples."},
     }
 
 

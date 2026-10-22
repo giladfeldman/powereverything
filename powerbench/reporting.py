@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from .schema import Scenario
 
-TEMPLATE_VERSION = "1.2"
+TEMPLATE_VERSION = "1.3"
 
 
 def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | None = None, family_alpha: float | None = None) -> dict:
@@ -50,6 +50,14 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
         body += "Design parameters: " + "; ".join(f"{key.replace('_', ' ')} = {json.dumps(value, ensure_ascii=False)}" for key, value in sorted(s.design.items())) + ". "
     if s.model == "logrank_two_arm" and result.get("p_event_source")=="derived_from_accrual_followup_dropout":
         body += f"The hazard-derived event probability at the realized integer allocation was {result['p_event']:.9g}; the aggregate probability at the requested allocation was {result['requested_allocation_p_event']:.9g}. "
+    if "n1" in result and "n2" in result and s.design.get("allocation_ratio") is not None:
+        realized=result["n2"]/result["n1"]
+        if abs(realized-float(s.design["allocation_ratio"]))>1e-12:
+            body += f"The requested group-2/group-1 allocation ratio was {float(s.design['allocation_ratio']):.9g}; the realized integer ratio was {realized:.9g}. The reported arm counts define this calculation. "
+    if s.model == "logrank_two_arm":
+        body += "Power uses the Schoenfeld normal approximation under the stated event model; small-event operating characteristics require separate assessment. "
+    if s.model == "welch_t":
+        body += "Power uses the Welch-Satterthwaite noncentral-t planning approximation. "
     if s.model == "meta_analysis_random":
         body += (f"Hartung-Knapp inference used df = {int(s.design['studies']) - 1}. " if result.get("hartung_knapp") else "The two-study boundary uses a normal approximation rather than Hartung-Knapp inference; small-study calibration is not established by this calculation. ")
     if result.get("search_domain"):

@@ -40,7 +40,7 @@ def anonymous_snapshot(result: dict) -> dict:
     sanitized = {"schema_version": "1.0", "operation": request["operation"], "scenario": scenario}
     if request.get("sample"):
         sanitized["sample"] = {k: _numeric(v) for k, v in request["sample"].items() if k in {"n1", "n2", "n_total"}}
-    if request.get("domain"):
+    if request.get("domain") and request.get("operation") == "detectable_effect":
         sanitized["domain"] = {k: v for k, v in request["domain"].items() if k in {"lower", "upper", "direction", "parameter"}}
     normalized, _ = normalize(sanitized)
     original = result.get("result", result.get("reference", {}))
@@ -74,11 +74,12 @@ def anonymous_snapshot(result: dict) -> dict:
     # can identify an author and are deliberately excluded from reviewer exports.
     shared_provenance = {"engine_version": version, "method_id": scenario["model"], "method_version": provenance.get("method_version"), "input_sha256": input_hash(normalized)}
     version_pattern = r"\d+\.\d+\.\d+(?:(?:a|b|rc|\.post|\.dev)\d+)?"
-    dependencies = {name: value for name, value in provenance.get("dependencies", {}).items()
+    verified_provenance = replay["provenance"]
+    dependencies = {name: value for name, value in verified_provenance.get("dependencies", {}).items()
                     if name in {"numpy", "scipy"} and isinstance(value, str) and re.fullmatch(version_pattern, value)}
     if dependencies:
         shared_provenance["dependencies"] = dependencies
-    python_version = provenance.get("runtime", {}).get("python")
+    python_version = verified_provenance.get("runtime", {}).get("python")
     if isinstance(python_version, str) and re.fullmatch(version_pattern, python_version):
         shared_provenance["runtime"] = {"python": python_version}
     return {"schema_version": "1.0", "anonymization_version": "1.1", "status": "complete", "operation": normalized["operation"], "normalized_request": normalized, "result": values,

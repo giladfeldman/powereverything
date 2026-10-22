@@ -8,14 +8,17 @@ from math import isfinite
 from ..api import analyze
 from ..provenance import input_hash
 
-REVIEW_POLICY_VERSION = "1.1"
+REVIEW_POLICY_VERSION = "1.2"
 
 
 def review(record: dict) -> dict:
     if not isinstance(record, dict):
         raise ValueError("Review record must be an object")
+    mode=record.get("mode","compare")
+    if mode not in {"compare","calculate"}:
+        raise ValueError("Choose comparison or calculation without comparison")
     source = record.get("source_text", "")
-    if not isinstance(source, str) or not source.strip() or len(source) > 100_000:
+    if not isinstance(source, str) or (mode=="compare" and not source.strip()) or len(source) > 100_000:
         raise ValueError("A source section of up to 100,000 characters is required")
     if record.get("confirmed") is not True:
         return {"status": "incomplete", "classification": "incomplete_reporting", "reason": "Confirm the source match and all calculation inputs before checking arithmetic."}
@@ -26,12 +29,20 @@ def review(record: dict) -> dict:
         raise ValueError("Review requires a plan, fixed-sample power, or detectable-effect request")
     # A stated value is required; no .95/.05 or sample defaults are inferred from prose.
     scenario = request.get("scenario", {})
+    if not isinstance(scenario,dict):
+        raise ValueError("scenario must be an object")
     rule = scenario.get("decision_rule", {})
+    if not isinstance(rule,dict):
+        raise ValueError("decision_rule must be an object")
     required = {"model": scenario.get("model"), "alpha": rule.get("alpha"), "alternative": rule.get("alternative")}
     if request.get("operation", "plan") != "power":
         required["target_power"] = scenario.get("target_power")
     design = scenario.get("design", {})
+    if not isinstance(design,dict):
+        raise ValueError("design must be an object")
     model = scenario.get("model")
+    if model is not None and not isinstance(model,str):
+        raise ValueError("model must be a named model")
     required["multiplicity_method"] = rule.get("multiplicity_method")
     model_keys = {
         "one_way_anova": ("groups",), "linear_regression": ("predictors",),
@@ -52,6 +63,12 @@ def review(record: dict) -> dict:
     if result["status"] != "complete":
         status = result["status"]
         return {"status": status, "classification": {"unreachable": "unreachable_in_declared_domain", "budget_exhausted": "calculation_budget_exhausted"}.get(status, "unsupported_method"), "calculation": result}
+    if mode=="calculate":
+        return {"schema_version":"1.0","review_policy_version":REVIEW_POLICY_VERSION,"status":"complete","classification":"calculation_only",
+                "source_completeness":"user_confirmed_assumptions_without_numeric_comparison","design_match":"user_confirmed","source_sha256":input_hash(source) if source else None,
+                "explanation":"Calculated under your explicitly confirmed assumptions. No reported numeric value was supplied or compared; this does not establish that uploaded code runs or that a manuscript is correct.",
+                "calculation":result,"suggestions":["Compare the confirmed assumptions and sample units with the source, where supplied.","Supply the effect rationale and timing before using the reporting draft."],
+                "execution":"The deterministic calculation ran; uploaded user code was not executed."}
     reported = record.get("reported_value")
     if isinstance(reported, bool) or not isinstance(reported, (int, float)) or not isfinite(reported):
         raise ValueError("An explicit numeric reported value is required")

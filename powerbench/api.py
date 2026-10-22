@@ -41,6 +41,11 @@ def analyze(request: dict) -> dict:
     envelope = {"schema_version": "1.0", "status": status, "operation": normalized["operation"], "normalized_request": normalized,
                 "result": result, "assumptions": list(scenario.assumptions), "warnings": ["Conditional on the stated design and effect assumptions; this does not certify the study design."],
                 "operation_policy_version": "1.2", "diagnostics": result.get("diagnostics", {}), "provenance": provenance(scenario.model, normalized)}
+    if "n1" in result and "n2" in result and scenario.design.get("allocation_ratio") is not None:
+        requested=float(scenario.design["allocation_ratio"])
+        realized=result["n2"]/result["n1"]
+        if abs(realized-requested)>1e-12:
+            envelope["warnings"].append(f"Requested allocation ratio {requested:.9g}; realized group-2/group-1 ratio {realized:.9g}. The explicit integer arm counts determine power.")
     if result.get("search_domain"):
         envelope["warnings"].append(result["search_domain"]["interpretation"])
     from .capabilities import FIXED_MODELS

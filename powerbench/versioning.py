@@ -35,8 +35,8 @@ METHOD_VERSION = "2.0.0"
 #: method_id -> semantic version of that method's computed answers.
 METHOD_VERSIONS: dict[str, str] = {
     "two_sample_t": "1.1.0",
-    "welch_t": "1.0.0",
-    "paired_t": "1.0.0",
+    "welch_t": "1.1.0",
+    "paired_t": "1.1.0",
     "one_sample_proportion": "1.0.0",
     "two_sample_proportion": "1.0.0",
     "chi_square_gof": "1.0.0",
@@ -52,14 +52,14 @@ METHOD_VERSIONS: dict[str, str] = {
     "poisson_regression": "1.0.0",
     "correlation": "1.0.0",
     "tost_equivalence": "1.1.0",
-    "mediation_indirect": "2.0.0",
+    "mediation_indirect": "2.1.0",
     "meta_analysis_fixed": "1.0.0",
-    "meta_analysis_random": "2.0.0",
+    "meta_analysis_random": "2.1.0",
     "noninferiority_t": "1.0.0",
     "ordinal_regression": "2.0.0",
     "bayes_factor_t": "1.1.0",
     "group_sequential_t": "2.2.0",
-    "logrank_two_arm": "1.3.0",
+    "logrank_two_arm": "1.4.0",
     "rope_equivalence_t": "1.0.0",
 }
 
@@ -78,6 +78,12 @@ class MethodChange:
 #: Newest first. `numeric_impact` must state what moved and by how much -- "improved
 #: accuracy" is not enough for someone deciding whether to re-check their study plan.
 METHOD_CHANGELOG: tuple[MethodChange, ...] = (
+    MethodChange(method_id="logrank_two_arm",version="1.4.0",date="2026-10-22",summary="Search all smaller totals under rounded allocation; local power need not be monotone.",numeric_impact="With HR=10, control hazard=.01, follow-up=.5, nominal allocation ratio=.01 and target=.06627943457127596, the local walk returned N=455 although N=4 meets target under the declared two-per-arm clamp. Search is now globally minimal within that explicit rule and remains bounded by the common budget."),
+    MethodChange(method_id="welch_t", version="1.1.0", date="2026-10-22", summary="Use reflected, finite-checked noncentral-t tails.", numeric_impact='At n1=n2=3, raw difference=10 and both SDs=1, the old two-sided tail returned NaN. Reflected survival probabilities retain the finite result and prevent NaN from skipping a qualifying required-N candidate.'),
+    MethodChange(method_id="paired_t", version="1.1.0", date="2026-10-22", summary="Use reflected, finite-checked noncentral-t tails.", numeric_impact='At n=2 and dz=6, alpha=.05, the old two-sided power returned NaN and could terminate required-N search prematurely. The reflected tail is finite; sample sizes are searched only with finite probabilities.'),
+    MethodChange(method_id="mediation_indirect", version="2.1.0", date="2026-10-22", summary="Use reflected, finite-checked noncentral-t tails.", numeric_impact='At n=4 and a=b=6, alpha=.05, the joint-significance product previously returned NaN. Both path tests now use finite reflected t tails; the joint-significance model and residual-scale assumptions are unchanged.'),
+    MethodChange(method_id="meta_analysis_random", version="2.1.0", date="2026-10-22", summary="Use reflected, finite-checked noncentral-t tails.", numeric_impact='With six studies, n_per_group=10, d=2, tau=.2 and alpha=.05, the old Hartung-Knapp tail returned NaN. Reflected tails return finite power and prevent nonfinite search comparisons; the HK variance model is unchanged.'),
+
     MethodChange(
         method_id="two_sample_t", version="1.1.0", date="2026-10-22",
         summary="Include two participants per arm in required-N search and reflect extreme noncentral-t tails.",
