@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, replace
+from math import isfinite
 from typing import Any
 
 from .adapters.r_pwr import RPwrAdapter
@@ -14,7 +15,11 @@ DEFAULT_TARGET_POWER = 0.95
 
 def _number(payload: dict[str, Any], key: str) -> float:
     try:
-        return float(payload[key])
+        value=payload[key]
+        if isinstance(value,bool):raise TypeError("A boolean is not a scientific numeric input")
+        number=float(value)
+        if not isfinite(number):raise ValueError("Scientific inputs must be finite")
+        return number
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError(f"{key.replace('_', ' ').capitalize()} must be a number.") from error
 
@@ -23,7 +28,9 @@ def _probabilities(payload: dict[str, Any], key: str) -> list[float]:
     raw = payload.get(key)
     values = raw if isinstance(raw, list) else str(raw or "").split(",")
     try:
-        return [float(value) for value in values]
+        numbers=[float(value) for value in values if not isinstance(value,bool)]
+        if len(numbers)!=len(values) or not all(isfinite(value) for value in numbers):raise ValueError("Probabilities must be finite numeric inputs")
+        return numbers
     except (TypeError, ValueError) as error:
         raise ValueError(f"{key.replace('_', ' ').capitalize()} must be comma-separated probabilities.") from error
 
@@ -31,6 +38,11 @@ def _probabilities(payload: dict[str, Any], key: str) -> list[float]:
 def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, float, int]:
     """Create an assumption-visible plan from the app's intentionally small v0.1 wizard."""
     model = payload.get("model")
+    payload=dict(payload)
+    if isinstance(payload.get("equal_variance"),str):
+        value=payload["equal_variance"].lower()
+        if value not in {"true","false"}:raise ValueError("equal_variance must be boolean")
+        payload["equal_variance"]=value=="true"
     payload = {"target_power": DEFAULT_TARGET_POWER, **payload}
     target_power = _number(payload, "target_power")
     rate = payload.get("attrition_rate", 0)

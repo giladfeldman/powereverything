@@ -71,6 +71,10 @@ class Scenario:
     status: Literal["certification", "smoke", "draft"] = "draft"
 
     def validate(self) -> None:
+        json.dumps(asdict(self),allow_nan=False)
+        for key in ("equal_variance","hartung_knapp"):
+            if key in self.design and not isinstance(self.design[key],bool):
+                raise ValueError(f"{key} must be boolean")
         rate = self.design.get("attrition_rate", 0)
         if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 <= rate < 1:
             raise ValueError("attrition_rate must lie in [0, 1)")

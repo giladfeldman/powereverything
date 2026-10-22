@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from math import ceil
+from math import ceil, isfinite
 
 from scipy.stats import binom, binomtest, chi2, f, ncf, nct, ncx2, norm, t
 
@@ -14,11 +14,17 @@ def two_sample_t_power(n1: int, n2: int, d: float, alpha: float, alternative: st
     """Exact noncentral-t power for Student's pooled-variance two-sample t-test."""
     df = n1 + n2 - 2
     ncp = d / (1 / n1 + 1 / n2) ** 0.5
+    # Reflection gives P(T_delta < -c) = P(T_-delta > c). The sf
+    # representation avoids SciPy cdf NaNs in tiny extreme-effect lower tails.
     if alternative == "two.sided":
         critical = t.ppf(1 - alpha / 2, df)
-        return float(nct.cdf(-critical, df, ncp) + nct.sf(critical, df, ncp))
-    critical = t.ppf(1 - alpha, df)
-    return float(nct.sf(critical, df, ncp) if alternative == "greater" else nct.cdf(-critical, df, ncp))
+        probability = float(nct.sf(critical, df, -ncp) + nct.sf(critical, df, ncp))
+    else:
+        critical = t.ppf(1 - alpha, df)
+        probability = float(nct.sf(critical, df, ncp if alternative == "greater" else -ncp))
+    if not isfinite(probability) or not 0 <= probability <= 1:
+        raise ValueError("Noncentral-t power evaluation failed; search cannot use a nonfinite probability")
+    return probability
 
 
 def required_n_two_sample_t(s: Scenario) -> dict[str, float | int | str]:
@@ -27,7 +33,7 @@ def required_n_two_sample_t(s: Scenario) -> dict[str, float | int | str]:
 
     # Bracketing by growth avoids evaluating the noncentral t CDF at enormous
     # degrees of freedom, where some numerical backends return NaN.
-    lower, upper = 2, 4
+    lower, upper = 1, 2
     while two_sample_t_power(upper, max(2, ceil(upper * ratio)), d, alpha, alternative) < target:
         check_search_budget()
         lower, upper = upper, upper * 2

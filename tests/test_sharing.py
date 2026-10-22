@@ -33,3 +33,15 @@ def test_sensitivity_snapshot_replays_without_an_invented_effect():
     assert analyze(public["normalized_request"])["result"]["detectable_effect"]==result["result"]["detectable_effect"]
 
     assert public["normalized_request"]["sample"] == {"n1":100,"n2":100}
+
+
+def test_anonymous_snapshot_retains_only_neutral_reproduction_runtime():
+    scenario=load_scenario("data/scenarios/two_sample_t_balanced.json").to_dict()
+    result=analyze({"operation":"plan","scenario":scenario})
+    result["provenance"]["runtime"]["platform"]="IDENTITY_PLATFORM_MARKER"
+    result["provenance"]["dependencies"]["private-package"]="IDENTITY_DEPENDENCY_MARKER"
+    public=anonymous_snapshot(result)
+    assert public["provenance"]["dependencies"]=={name:result["provenance"]["dependencies"][name] for name in ("numpy","scipy")}
+    assert public["provenance"]["runtime"]=={"python":result["provenance"]["runtime"]["python"]}
+    assert "IDENTITY_" not in json.dumps(public)
+    assert "execution" not in public["provenance"]

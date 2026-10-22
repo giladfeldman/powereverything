@@ -70,6 +70,17 @@ def anonymous_snapshot(result: dict) -> dict:
     for script in scripts:
         if script["language"] == "python":
             script["code"] = script["code"].replace(f"powerbench=={__version__}", f"powerbench=={version}")
-    return {"schema_version": "1.0", "anonymization_version": "1.0", "status": "complete", "operation": normalized["operation"], "normalized_request": normalized, "result": values,
+    # Preserve only neutral version pins. OS/build/host details and timestamps
+    # can identify an author and are deliberately excluded from reviewer exports.
+    shared_provenance = {"engine_version": version, "method_id": scenario["model"], "method_version": provenance.get("method_version"), "input_sha256": input_hash(normalized)}
+    version_pattern = r"\d+\.\d+\.\d+(?:(?:a|b|rc|\.post|\.dev)\d+)?"
+    dependencies = {name: value for name, value in provenance.get("dependencies", {}).items()
+                    if name in {"numpy", "scipy"} and isinstance(value, str) and re.fullmatch(version_pattern, value)}
+    if dependencies:
+        shared_provenance["dependencies"] = dependencies
+    python_version = provenance.get("runtime", {}).get("python")
+    if isinstance(python_version, str) and re.fullmatch(version_pattern, python_version):
+        shared_provenance["runtime"] = {"python": python_version}
+    return {"schema_version": "1.0", "anonymization_version": "1.1", "status": "complete", "operation": normalized["operation"], "normalized_request": normalized, "result": values,
             "warnings": ["Identity metadata and source documents are excluded. Scientific details may still reveal identity; review this exact snapshot before sharing."],
-            "provenance": {"engine_version": version, "method_id": scenario["model"], "method_version": provenance.get("method_version"), "input_sha256": input_hash(normalized)}, "reproduction": scripts, "reporting": replay.get("reporting", {}), "citations": replay.get("citations", [])}
+            "provenance": shared_provenance, "reproduction": scripts, "reporting": replay.get("reporting", {}), "citations": replay.get("citations", [])}

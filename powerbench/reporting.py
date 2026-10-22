@@ -21,7 +21,7 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
     if s.model == "logrank_two_arm":
         unit = "participants (event-driven log-rank design)"
     if s.framework == "bayesian":
-        criterion = (f"BF10 threshold {s.design.get('bf_threshold')} under the stated prior" if s.model == "bayes_factor_t" else f"posterior ROPE probability threshold {s.design.get('rope_threshold')}")
+        criterion = ((f"BIC-style approximate BF10 threshold {s.design.get('bf_threshold')}" if s.design.get('bf_method','jzs')=='bic' else f"BF10 threshold {s.design.get('bf_threshold')} under the stated Cauchy prior") if s.model == "bayes_factor_t" else f"posterior ROPE probability threshold {s.design.get('rope_threshold')}")
         rule = f"The success criterion was {criterion}."
     else:
         test = {"noninferiority_t": "a one-sided non-inferiority test", "tost_equivalence": "two one-sided equivalence tests", "mediation_indirect": "joint significance of two-sided path tests"}.get(s.model)
@@ -48,6 +48,8 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
         body += "The fixed counts are analysable; attrition metadata was not applied as an inflation or reduction. "
     if s.design:
         body += "Design parameters: " + "; ".join(f"{key.replace('_', ' ')} = {json.dumps(value, ensure_ascii=False)}" for key, value in sorted(s.design.items())) + ". "
+    if s.model == "logrank_two_arm" and result.get("p_event_source")=="derived_from_accrual_followup_dropout":
+        body += f"The hazard-derived event probability at the realized integer allocation was {result['p_event']:.9g}; the aggregate probability at the requested allocation was {result['requested_allocation_p_event']:.9g}. "
     if s.model == "meta_analysis_random":
         body += (f"Hartung-Knapp inference used df = {int(s.design['studies']) - 1}. " if result.get("hartung_knapp") else "The two-study boundary uses a normal approximation rather than Hartung-Knapp inference; small-study calibration is not established by this calculation. ")
     if result.get("search_domain"):

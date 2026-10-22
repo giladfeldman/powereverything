@@ -58,7 +58,8 @@ def test_changes_since_reports_only_that_method():
     ordinal_changes = changes_since("ordinal_regression", "1.0.0")
     assert ordinal_changes, "the 2026-08-03 ordinal correction is missing from the changelog"
     assert all(change.method_id == "ordinal_regression" for change in ordinal_changes)
-    assert changes_since("two_sample_t", "1.0.0") == []
+    assert changes_since("welch_t", "1.0.0") == []
+    assert all(change.method_id == "two_sample_t" for change in changes_since("two_sample_t", "1.0.0"))
 
 
 def test_changelog_entries_state_a_numeric_impact():

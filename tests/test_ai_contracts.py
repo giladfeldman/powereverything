@@ -70,3 +70,19 @@ def test_extraction_replay_also_reproduces_no_default_editor_draft():
     result=assistance_record('extraction',text,{'has_power_analysis':True,'analyses':[{'fields':{'model':{'value':'paired_t','quote':'paired t test','start':2,'end':15,'status':'reported'}}}]})
     replay=subprocess.run([sys.executable,'-c',result['reproduction'][0]['code']],capture_output=True,text=True,check=True,timeout=120)
     assert json.loads(replay.stdout)['analyses']==result['analyses']
+
+
+def test_rewrite_preserves_the_explicitly_disclosed_canonical_rounded_paragraph():
+    from powerbench.review.assistant import validate_assistance
+    confirmed={'canonical_result':{'power':.854489321},'canonical_paragraph':'Conditional power was 0.8545.','chronology':'unknown','effect_rationale':None}
+    proposed={'paragraph':'Conditional power was 0.8545. [effect rationale needed]','confirmed':confirmed}
+    assert validate_assistance('rewrite','Conditional power was 0.8545.',proposed,confirmed)['paragraph']==proposed['paragraph']
+
+
+def test_public_prompt_and_record_fingerprint_the_same_source_contract():
+    from powerbench.review.assistant import assistant_prompt,assistance_record,contract_fingerprint
+    fingerprint=contract_fingerprint()
+    assert len(fingerprint)==64
+    assert assistant_prompt('extraction','A section.')['contract_sha256']==fingerprint
+    assert assistant_prompt('audit','A section.')['contract_sha256']==fingerprint
+    assert assistance_record('audit','A section.',{'findings':[]})['contract_sha256']==fingerprint

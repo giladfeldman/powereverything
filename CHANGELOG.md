@@ -17,8 +17,29 @@ version and only when a method's answers change. See
 - Moves scientific planning, reporting, comparison, conversions, review, external-tool
   adjudication and resources into the public package. No application/DB dependency.
 - Includes packaged R adapters, scenarios, method attribution and signed G*Power captures.
-- Preserves explicit historical power .80 and existing required-N method versions.
-- Simulation policy 1.1 rejects invalid/resource-excessive inputs, freezes defaults/seed,
+- Preserves explicit historical power .80. Method versions explicitly identify numerical
+  corrections; historical results are never silently relabelled as current validation.
+- Two-sample t method 1.1.0 includes the two-per-arm lower boundary and uses reflected
+  survival probabilities for extreme noncentral-t tails. At d=6, alpha=.05 and target
+  .80, required N changes from 6 to 4 (two per arm). At d=10 and target .999,
+  required N changes from 8 to 6; an intermediate SciPy NaN previously misled the search.
+- Bayes-factor method 1.1.0 integrates the entire Cauchy prior through a stable
+  half-normal mixture. For t=3, n1=n2=50 and r=.7071, BF10 changes from
+  10.552472875 to 10.383633507; independent R BayesFactor agrees with the latter.
+- Sequential method 2.2.0 uses seeded bounded QMC and integer minimality search;
+  balanced d=.4, alpha=.05 and target .80 changes from total N=200 to 198.
+  Requested integration tolerances are not certified error bounds.
+- Log-rank method 1.3.0 evaluates actual integer arm allocation and reweights
+  hazard-derived event probabilities at that allocation. A supplied aggregate event
+  probability remains a declared constant. Nominal and realized probabilities are explicit.
+- Recruitment rounds within declared arms/cells using decimal attrition rates;
+  100 analysable participants in each arm with .10 attrition requires 112 recruits
+  per arm (224 total), rather than pooled rounding to 223.
+- Public AI contracts expose exact prompts, conservative source/argument checks,
+  parser fingerprints and validation replay. Rewrite proposals bind to the hash of
+  an unchanged confirmed record. Anonymous exports retain only allowlisted neutral
+  software version pins, excluding platform/build identity and execution timestamps.
+- Simulation policy 1.3 rejects invalid/resource-excessive inputs, freezes defaults/seed,
   and retains out-of-domain sensitivity points as invalid rather than silently clipping.
   Main-scenario formulas are unchanged. Legacy prose review no longer invents sidedness
   or accepts a blanket two-percent N discrepancy as rounding.

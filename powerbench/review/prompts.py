@@ -5,7 +5,9 @@ import json
 import re
 from math import isclose, isfinite
 
-PROMPT_VERSION = "2026-10-21.4"
+from .evidence import anchored_number, lexical_support, numeric_tokens
+
+PROMPT_VERSION = "2026-10-22.6"
 FIELDS = ("model", "kind", "effect", "effect_metric", "alpha", "alternative", "target_power", "reported_n", "n_unit", "allocation_ratio", "attrition_rate", "software", "groups", "predictors", "total_predictors", "tested_predictors", "studies", "tau", "looks", "categories", "sd_group1", "sd_group2", "multiplicity_method", "family_alpha", "primary_tests")
 
 
@@ -21,20 +23,15 @@ def _field_evidence(name, value, quote):
     """Conservative lexical checks; these still do not establish semantic truth."""
     if not isinstance(quote,str):
         return False
-    patterns={"alpha": r"(?:alpha|α|significance\s+(?:level|threshold))", "target_power": r"(?:target\s+)?power", "attrition_rate": r"(?:attrition|dropout|loss(?:es)?(?:\s+to\s+follow.up)?)"}
-    if name in patterns:
-        number=r"([-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?)"
-        matches=re.finditer(patterns[name]+r"\s*(?:(?:was|is|of|at|rate|level|set|to|equal|equals)\s*|[=:]){0,4}\s*"+number+r"\s*(%|percent)?",quote,re.IGNORECASE)
-        return any(isclose(float(m.group(1))/(100 if m.group(2) else 1),value,rel_tol=1e-10,abs_tol=1e-12) for m in matches)
-    if name=='alternative':
-        patterns={'two.sided':r'two[ -]sided|two[ -]tailed','greater':r'greater|upper[ -]tailed|positive direction','less':r'less|lower[ -]tailed|negative direction'}
-        return bool(re.search(patterns.get(value,r'(?!)'),quote,re.IGNORECASE))
+    if name in {'alpha','target_power','attrition_rate'}:
+        return anchored_number(name,value,quote)
+    if name in {'alternative','multiplicity_method','model','software','n_unit','effect_metric'}:
+        return lexical_support(name,value,quote)
     if name=='kind':
         if value=='apriori':
             return bool(re.search(r'a[ -]priori|before data collection',quote,re.IGNORECASE)) and not re.search(r'observed|after data collection|post[ -]?hoc',quote,re.IGNORECASE)
         if value=='posthoc':return bool(re.search(r'observed|after data collection|post[ -]?hoc',quote,re.IGNORECASE))
         if value=='sensitivity':return bool(re.search(r'sensitivity|detectable effect|sample fixed|fixed.sample',quote,re.IGNORECASE))
-    if name=='multiplicity_method':return value in {'none','bonferroni','hochberg'}
     return True
 
 
@@ -67,7 +64,7 @@ def validate_extraction(text: str, proposed: dict) -> dict:
             numeric = name in {"effect", "alpha", "target_power", "reported_n", "allocation_ratio", "attrition_rate", "groups", "predictors", "total_predictors", "tested_predictors", "studies", "tau", "looks", "categories", "sd_group1", "sd_group2", "family_alpha", "primary_tests"}
             supported = matched
             if value is not None and numeric:
-                tokens = [float(token) for token in re.findall(r"(?<![\w.])[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?", quote or "")]
+                tokens = numeric_tokens(quote or "")
                 supported = matched and isinstance(value, (int, float)) and not isinstance(value, bool) and isfinite(value) and any(isclose(value, token, rel_tol=1e-10, abs_tol=1e-12) or (name in {"alpha", "target_power", "attrition_rate"} and re.search(r"%|percent", quote or "", re.IGNORECASE) and isclose(value * 100, token, rel_tol=1e-10, abs_tol=1e-12)) for token in tokens)
             if name in {"model", "kind", "effect_metric", "alternative", "n_unit", "software", "multiplicity_method"}:
                 supported = supported and isinstance(value, str) and bool(value.strip()) and len(value) <= 200

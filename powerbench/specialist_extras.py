@@ -200,7 +200,7 @@ def bayes_factor_t_power(
     ncp = cohens_d / (1 / n1 + 1 / n2) ** 0.5
     critical = _critical_t_for_bf(n1, n2, bf_threshold, method, r_scale)
     value = float(nct.sf(critical, df, ncp) + nct.cdf(-critical, df, ncp))
-    if not isfinite(value):
+    if not isfinite(value) or not 0<=value<=1:
         # Conditioning on V~chi-square(df) gives an independent, bounded integral
         # when a library noncentral-t tail is numerically undefined.
         def conditional(u):
@@ -698,21 +698,30 @@ def required_n_logrank_two_arm(s: Scenario) -> dict[str, Any]:
     def split(total):
         first = max(2, min(total-2, int(total/(1+ratio)+.5)))
         return first, total-first
+    def event_probability(total):
+        if control_hazard is None or followup_years is None:return p_event
+        first,second=split(total)
+        return derive_logrank_event_probability(hr,float(control_hazard),float(accrual_years or 0),float(followup_years),float(s.design.get("dropout_hazard",0)),second/first)
     def discrete_power(total):
         first, second = split(total)
-        return logrank_two_arm_power(total, hr, p_event, alpha, alternative, second/first)
+        return logrank_two_arm_power(total, hr, event_probability(total), alpha, alternative, second/first)
     while discrete_power(n_total) < target:
         check_search_budget()
         n_total += 1
         if n_total > 1_000_000:
             raise RuntimeError("Could not bracket log-rank sample size")
+    while n_total>4 and discrete_power(n_total-1)>=target:
+        check_search_budget()
+        n_total-=1
     n1, n2 = split(n_total)
+    realized_p_event=event_probability(n_total)
     return {
         "n1": n1,
         "n2": n2,
         "n_total": n_total,
-        "n_events": float(n_total * p_event),
-        "p_event": p_event,
+        "n_events": float(n_total * realized_p_event),
+        "p_event": realized_p_event,
+        "requested_allocation_p_event": p_event,
         "p_event_source": p_event_source,
         "power": discrete_power(n_total),
         "requested_allocation_ratio": ratio,

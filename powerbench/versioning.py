@@ -34,7 +34,7 @@ METHOD_VERSION = "2.0.0"
 
 #: method_id -> semantic version of that method's computed answers.
 METHOD_VERSIONS: dict[str, str] = {
-    "two_sample_t": "1.0.0",
+    "two_sample_t": "1.1.0",
     "welch_t": "1.0.0",
     "paired_t": "1.0.0",
     "one_sample_proportion": "1.0.0",
@@ -59,7 +59,7 @@ METHOD_VERSIONS: dict[str, str] = {
     "ordinal_regression": "2.0.0",
     "bayes_factor_t": "1.1.0",
     "group_sequential_t": "2.2.0",
-    "logrank_two_arm": "1.2.0",
+    "logrank_two_arm": "1.3.0",
     "rope_equivalence_t": "1.0.0",
 }
 
@@ -78,6 +78,12 @@ class MethodChange:
 #: Newest first. `numeric_impact` must state what moved and by how much -- "improved
 #: accuracy" is not enough for someone deciding whether to re-check their study plan.
 METHOD_CHANGELOG: tuple[MethodChange, ...] = (
+    MethodChange(
+        method_id="two_sample_t", version="1.1.0", date="2026-10-22",
+        summary="Include two participants per arm in required-N search and reflect extreme noncentral-t tails.",
+        numeric_impact="Balanced d=6, alpha=.05, target=.8 changes from 3 to 2 per arm. At d=10 and target=.999, 3 per arm meets target; the old NaN branch incorrectly selected 4. Ordinary canonical scenarios are rechecked separately.",
+    ),
+    MethodChange(method_id="logrank_two_arm",version="1.3.0",date="2026-10-21",summary="Weight hazard-derived event probabilities by realized integer arm counts and verify the preceding integer sample, preserving the requested-allocation probability separately.",numeric_impact="For HR=5, control hazard=1, followup=.5, no accrual/dropout and requested equal allocation, the odd-N candidate event probability changes from .655692170832 to .641890969224 under its realized split. Required integer N and expected events may change; the complete input and derived values remain recorded."),
     MethodChange(method_id="bayes_factor_t",version="1.1.0",date="2026-10-21",summary="Integrate the full Cauchy prior using adaptive shifted/scaled quadrature; evaluate the declared minimum and fail closed on an unbracketed threshold.",numeric_impact="At t=3,n1=n2=50,r=.7071, BF10 changes from 10.552472875 to 10.383633507, matching R BayesFactor and independent integration. Strong-effect BIC plans can now return n1=10 instead of the off-by-one n1=11. Required N may change under corrected JZS thresholds."),
     MethodChange(method_id="logrank_two_arm",version="1.2.0",date="2026-10-21",summary="Compute planned log-rank power with the realized integer arm allocation and grow N against that power.",numeric_impact="For HR=5,event probability=1,balanced requested allocation and alpha=.05,target=.80, the previously reported power .826774055 becomes .824563400 for its actual odd-N split; near-threshold integer N can increase."),
     MethodChange(
