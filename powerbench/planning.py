@@ -234,11 +234,15 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
             "parameterization": "odds_ratio_at_baseline_risk",
         }
         design = {"predictor_type": payload.get("predictor_type", "binary"), "attrition_rate": _number(payload, "attrition_rate")}
+        if design["predictor_type"] == "binary":
+            design["allocation_ratio"] = _number(payload, "allocation_ratio") if payload.get("allocation_ratio") not in (None, "") else 1.0
+        elif payload.get("allocation_ratio") not in (None, ""):
+            raise ValueError("allocation_ratio applies only to a binary predictor")
         title = "Logistic regression coefficient plan"
         assumptions = [
             "The target is a single logistic coefficient expressed as an odds ratio at the stated baseline risk.",
             "The analytic result uses a Hsieh-style normal approximation; rare events or many covariates need simulation.",
-            "Binary predictors are assumed 50/50; continuous predictors are assumed standard-normal.",
+            "Binary predictors use the displayed group-2/group-1 allocation ratio; continuous predictors are assumed standard-normal.",
         ]
     elif model == "poisson_regression":
         effect = {"rate_ratio": _number(payload, "effect"), "parameterization": "rate_ratio"}
@@ -327,6 +331,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
     elif model == "ordinal_regression":
         effect = {"odds_ratio": _number(payload, "effect"), "parameterization": "proportional_odds_ratio"}
         design = {"categories": count(_number(payload, "categories"), "categories", 1), "attrition_rate": _number(payload, "attrition_rate")}
+        design["allocation_ratio"] = _number(payload, "allocation_ratio") if payload.get("allocation_ratio") not in (None, "") else 1.0
         title = "Ordinal proportional-odds plan"
         assumptions = [
             "The outcome has ordered categories and the proportional-odds assumption holds.",
@@ -514,6 +519,8 @@ def analyze_fields(payload: dict[str, Any]) -> dict[str, Any]:
     """Compatibility wizard fields normalized inside the scientific library."""
     goal = payload.get("goal", "required_sample_size")
     if goal == "required_sample_size":
+        if any(payload.get(key) not in (None, "") for key in ("n1", "n2", "n_total")):
+            raise ValueError("Sample counts require an explicit achieved_power or sensitivity goal")
         return make_plan(payload)
     if goal not in {"achieved_power", "sensitivity"}:
         raise ValueError("Unrecognized analysis goal")

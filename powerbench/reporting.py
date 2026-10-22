@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from .schema import Scenario
 
-TEMPLATE_VERSION = "1.4"
+TEMPLATE_VERSION = "1.5"
 
 
 def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | None = None, family_alpha: float | None = None) -> dict:
@@ -21,7 +21,7 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
     if s.model == "logrank_two_arm":
         unit = "participants (event-driven log-rank design)"
     if s.framework == "bayesian":
-        criterion = ((f"BIC-style approximate BF10 threshold {s.design.get('bf_threshold')}" if str(s.design.get('bf_method','jzs')).lower()=='bic' else f"BF10 threshold {s.design.get('bf_threshold')} under the stated Cauchy prior") if s.model == "bayes_factor_t" else f"posterior ROPE probability threshold {s.design.get('rope_threshold', .95)}")
+        criterion = ((f"BIC-style approximate BF10 threshold {s.design.get('bf_threshold')}" if str(s.design.get('bf_method','jzs')).lower()=='bic' else f"BF10 threshold {s.design.get('bf_threshold')} under a zero-centered Cauchy prior scale {s.design.get('r_scale', .7071):g}") if s.model == "bayes_factor_t" else f"posterior ROPE probability threshold {s.design.get('rope_threshold', .95)}")
         rule = f"The success criterion was {criterion}."
     else:
         test = {"noninferiority_t": "a one-sided non-inferiority test", "tost_equivalence": "two one-sided equivalence tests", "mediation_indirect": "joint significance of two-sided path tests"}.get(s.model)
@@ -31,6 +31,8 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
         if family_alpha is not None and s.decision_rule.multiplicity_method != "none":
             rule += f", with family alpha = {family_alpha:g} and {s.decision_rule.multiplicity_method} planning for the primary family"
         rule += "."
+    if s.model == "rope_equivalence_t":
+        rule += f" The zero-centered normal prior SD was {s.design.get('prior_sd', 10.):g} in raw mean-difference units."
     if s.goal == "sensitivity":
         body = (f"With a fixed analysable sample of {n} {unit}{allocation}, the detectable {result['effect_parameter']} was approximately {result['detectable_effect']:.9g} at target power {target_percent} under the stated design. "
                 "This is a fixed-sample sensitivity analysis; it does not use an observed effect to establish evidence for a null hypothesis. ")

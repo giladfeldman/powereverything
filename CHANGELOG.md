@@ -1,5 +1,8 @@
 # Changelog
 
+
+- Tighten supported parameter combinations and scientific snapshot identity; disclose actual prior defaults; preserve fixed-sample goals and reject bounded rewrite count/sidedness changes (requested Sonnet/Opus review controls).
+
 All notable changes to PowerBench are recorded here. Entries that change a computed number
 state the **numeric impact**, because a user planning a study needs to know what moved and
 by how much, not merely that something improved.

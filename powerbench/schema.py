@@ -153,6 +153,19 @@ class Scenario:
         unknown = set(self.design) - DESIGN_FIELDS[self.model] - COMMON_DESIGN_FIELDS
         if unknown:
             raise ValueError(f"Unsupported design fields for {self.model}: {', '.join(sorted(unknown))}")
+        categorical = {"predictor_type", "tested_term", "bf_method", "distribution"}
+        for key, value in self.design.items():
+            if key not in categorical | {"equal_variance", "hartung_knapp"}:
+                numeric_parameters(value, f"design.{key}")
+        if "allocation_ratio" in self.design and self.design["allocation_ratio"] <= 0:
+            raise ValueError("allocation_ratio must be positive")
+        if self.model == "logistic_regression" and self.design.get("predictor_type", "binary") == "continuous" and "allocation_ratio" in self.design:
+            raise ValueError("allocation_ratio applies only to a binary predictor")
+        if self.model == "logrank_two_arm" and any(key in self.design for key in ("control_hazard", "accrual_years", "dropout_hazard", "followup_years")):
+            if not {"control_hazard", "followup_years"} <= self.design.keys():
+                raise ValueError("A hazard-based event model requires control_hazard and followup_years")
+            if self.design["control_hazard"] <= 0 or self.design["followup_years"] <= 0:
+                raise ValueError("control_hazard and followup_years must be positive")
         tests = self.design.get("primary_tests", 1)
         if isinstance(tests, bool) or not isinstance(tests, (int, float)) or tests < 1 or tests > 10_000_000 or int(tests) != tests:
             raise ValueError("primary_tests must be a positive integer")

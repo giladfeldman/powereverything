@@ -47,3 +47,7 @@ Representable JSON integers can exceed floating-point range; percentage scaling 
 ## 2026-10-22 - Bind rewrite design and evidence claims
 
 Keeping a confirmed JSON record unchanged does not keep the paragraph true. Five watched-red mutations changed independent samples into pairs, doubled per-group units, asserted a different test, invented a prior-evidence rationale or removed the hypothetical-effect caveat. Bounded model/unit/claim screens now reject those mutations. They remain conservative lexical controls, not semantic certification; proposals still require source and author confirmation.
+
+## 2026-10-22 - Validate supported parameter combinations and disclose defaults
+
+Requested Opus 5.5 source review identified missing positive allocation checks for logistic/ordinal models, ignored allocation for continuous predictors, partial event models, and numeric-string inconsistency. Twenty-one watched-red controls also exposed uppercase-BIC sharing, stale snapshot input/method identity, silently discarded wizard sample counts, inferred review assumptions, hidden prior defaults and swapped rewrite count/sidedness claims. Validate these combinations, bind snapshot identity before anonymizing, disclose actual priors and keep bounded rewrite proposals subject to human confirmation. Replay agreement does not establish scientific validity. The historical privacy-stripping fixture must carry its intentionally constructed saved input hash; separate mutation tests require rejection when it changes.

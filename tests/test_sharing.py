@@ -1,6 +1,7 @@
 import json
 
 from powerbench.api import analyze
+from powerbench.provenance import input_hash
 from powerbench.schema import load_scenario
 from powerbench.sharing import anonymous_snapshot
 
@@ -12,6 +13,9 @@ def test_anonymous_allowlist_strips_identifying_metadata_and_generated_code():
     result=analyze({"operation":"plan","scenario":s})
     result["normalized_request"]["scenario"]["effect"]["private_note"]=marker
     result["normalized_request"]["scenario"]["design"]["owner"]=marker
+    # Construct a saved legacy-metadata fixture with a valid input identity.
+    # A later mutation without updating that identity is rejected separately.
+    result["provenance"]["input_sha256"]=input_hash(result["normalized_request"])
     result["owner"]=marker
     result["reporting"]={"apa":marker}
     public=anonymous_snapshot(result)

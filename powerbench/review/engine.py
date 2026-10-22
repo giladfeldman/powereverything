@@ -8,7 +8,7 @@ from math import isfinite
 from ..api import analyze
 from ..provenance import input_hash
 
-REVIEW_POLICY_VERSION = "1.2"
+REVIEW_POLICY_VERSION = "1.3"
 
 
 def review(record: dict) -> dict:
@@ -52,8 +52,19 @@ def review(record: dict) -> dict:
     }
     for key in model_keys.get(model, ()):
         required[key] = design.get(key)
-    if request.get("operation", "plan") == "plan" and model in {"two_sample_t", "welch_t", "two_sample_proportion", "logrank_two_arm", "group_sequential_t", "noninferiority_t", "tost_equivalence", "rope_equivalence_t", "bayes_factor_t"}:
+    if request.get("operation", "plan") == "plan" and model in {"two_sample_t", "welch_t", "two_sample_proportion", "logrank_two_arm", "group_sequential_t", "noninferiority_t", "tost_equivalence", "rope_equivalence_t", "bayes_factor_t", "ordinal_regression"}:
         required["allocation_ratio"] = design.get("allocation_ratio")
+    if model == "logistic_regression":
+        required["predictor_type"] = design.get("predictor_type")
+        if design.get("predictor_type") == "binary":
+            required["allocation_ratio"] = design.get("allocation_ratio")
+    if model == "bayes_factor_t":
+        required["bf_method"] = design.get("bf_method")
+        required["bf_threshold"] = design.get("bf_threshold")
+        if str(design.get("bf_method", "")).lower() == "jzs":
+            required["r_scale"] = design.get("r_scale")
+    for key in {"rope_equivalence_t": ("prior_sd", "rope_threshold"), "mediation_indirect": ("residual_sd_m", "residual_sd_y"), "chi_square_gof": ("min_expected_count",), "chi_square_independence": ("min_expected_count",)}.get(model, ()):
+        required[key] = design.get(key)
     if model == "ordinal_regression":
         required["baseline_category_probs"] = scenario.get("effect", {}).get("baseline_category_probs")
     missing = [name for name, value in required.items() if value is None or value == ""]

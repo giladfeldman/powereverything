@@ -154,6 +154,26 @@ def _rewrite_design_matches(paragraph: str, confirmed: dict) -> bool:
     result = result if isinstance(result, dict) else {}
     canonical = confirmed.get("canonical_paragraph", "")
     canonical = canonical if isinstance(canonical, str) else ""
+    rule = scenario.get("decision_rule", {}) if isinstance(scenario, dict) else {}
+    alternative = rule.get("alternative") if isinstance(rule, dict) else None
+    if alternative == "two.sided" and re.search(r"\bone[ -](?:sided|tailed)\b|\balternative\s*=\s*(?:greater|less)\b", paragraph, re.IGNORECASE) and model not in {"tost_equivalence"}:
+        return False
+    if alternative in {"greater", "less"} and re.search(r"\btwo[ -](?:sided|tailed)\b|\balternative\s*=\s*two\.sided\b", paragraph, re.IGNORECASE):
+        return False
+    if alternative in {"greater", "less"}:
+        opposite = "less" if alternative == "greater" else "greater"
+        if re.search(r"\balternative\s*=\s*" + opposite + r"\b", paragraph, re.IGNORECASE):
+            return False
+    count_roles = (
+        (r"\banalysable sample(?:\s+size)?\s+(?:of|was|is)\s*", result.get("n_total")),
+        (r"\brecruitment target\s+(?:of|was|is)\s*", None),
+    )
+    for index, (label, expected) in enumerate(count_roles):
+        canonical_values = [float(match.group(1)) for match in re.finditer(label + "(" + NUMBER + ")", canonical, re.IGNORECASE)]
+        allowed = [expected] if index == 0 and _finite_number(expected) else canonical_values
+        for match in re.finditer(label + "(" + NUMBER + ")", paragraph, re.IGNORECASE):
+            if allowed and not any(isclose(float(match.group(1)), value, rel_tol=1e-10, abs_tol=1e-12) for value in allowed):
+                return False
     pairs = r"\bcomplete pairs\b|\bpaired[ -](?:samples?|t(?:[ -]test)?)\b"
     if model != "paired_t" and re.search(pairs, paragraph, re.IGNORECASE):
         return False

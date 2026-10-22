@@ -27,7 +27,12 @@ def anonymous_snapshot(result: dict) -> dict:
     request = deepcopy(result.get("normalized_request"))
     if not isinstance(request, dict):
         raise ValueError("An immutable portable analysis result is required")
+    provenance = result.get("provenance", {})
+    if not isinstance(provenance, dict) or provenance.get("input_sha256") != input_hash(request):
+        raise ValueError("Stored scientific input hash does not match the original request")
     source = request.get("scenario", {})
+    if provenance.get("method_id") != source.get("model"):
+        raise ValueError("Stored method identity does not match the scientific request")
     scenario = {"id": "anonymous-analysis", "title": "Study analysis", "model": source.get("model"), "framework": source.get("framework"), "goal": source.get("goal"), "target_power": source.get("target_power"),
                 "effect": {k: _numeric(v) for k, v in source.get("effect", {}).items() if k in _EFFECT},
                 "design": {k: _numeric(v) for k, v in source.get("design", {}).items() if k in _DESIGN},
@@ -35,6 +40,8 @@ def anonymous_snapshot(result: dict) -> dict:
     # A small set of categorical scientific values is enumerated explicitly.
     for key, choices in {"predictor_type": {"binary", "continuous"}, "tested_term": {"A", "B", "AB"}, "bf_method": {"jzs", "bic"}, "predictor_distribution": {"binary", "normal"}}.items():
         value = source.get("design", {}).get(key)
+        if key == "bf_method" and isinstance(value, str):
+            value = value.lower()
         if value in choices:
             scenario["design"][key] = value
     sanitized = {"schema_version": "1.0", "operation": request["operation"], "scenario": scenario}
@@ -87,6 +94,6 @@ def anonymous_snapshot(result: dict) -> dict:
     python_version = verified_provenance.get("runtime", {}).get("python")
     if isinstance(python_version, str) and re.fullmatch(version_pattern, python_version):
         shared_provenance["runtime"] = {"python": python_version}
-    return {"schema_version": "1.0", "anonymization_version": "1.1", "status": "complete", "operation": normalized["operation"], "normalized_request": normalized, "result": values,
+    return {"schema_version": "1.0", "anonymization_version": "1.2", "status": "complete", "operation": normalized["operation"], "normalized_request": normalized, "result": values,
             "warnings": ["Identity metadata and source documents are excluded. Scientific details may still reveal identity; review this exact snapshot before sharing."],
             "provenance": shared_provenance, "reproduction": scripts, "reporting": replay.get("reporting", {}), "citations": replay.get("citations", [])}
