@@ -40,6 +40,68 @@ Model = Literal[
 Framework = Literal["frequentist", "equivalence", "bayesian"]
 
 
+DESIGN_FIELDS = {
+    "two_sample_t": frozenset(['allocation_ratio', 'equal_variance']),
+    "welch_t": frozenset(['allocation_ratio', 'equal_variance']),
+    "paired_t": frozenset([]),
+    "one_sample_proportion": frozenset([]),
+    "two_sample_proportion": frozenset(['allocation_ratio']),
+    "chi_square_gof": frozenset(['categories', 'min_expected_count']),
+    "chi_square_independence": frozenset(['rows', 'cols', 'min_expected_count']),
+    "one_way_anova": frozenset(['groups']),
+    "factorial_anova": frozenset(['levels_a', 'levels_b', 'tested_term']),
+    "ancova": frozenset(['groups', 'covariate_r2']),
+    "planned_contrast": frozenset(['groups', 'contrast_weights']),
+    "linear_regression": frozenset(['predictors']),
+    "incremental_regression": frozenset(['total_predictors', 'tested_predictors']),
+    "moderation": frozenset(['total_predictors']),
+    "logistic_regression": frozenset(['predictor_type', 'allocation_ratio']),
+    "poisson_regression": frozenset(['baseline_rate', 'exposure']),
+    "correlation": frozenset(['distribution']),
+    "tost_equivalence": frozenset(['allocation_ratio']),
+    "mediation_indirect": frozenset(['residual_sd_m', 'residual_sd_y']),
+    "meta_analysis_fixed": frozenset(['studies', 'n_per_group_per_study']),
+    "meta_analysis_random": frozenset(['studies', 'tau', 'hartung_knapp', 'n_per_group_per_study']),
+    "noninferiority_t": frozenset(['allocation_ratio']),
+    "ordinal_regression": frozenset(['categories', 'allocation_ratio']),
+    "bayes_factor_t": frozenset(['allocation_ratio', 'bf_method', 'bf_threshold', 'r_scale']),
+    "group_sequential_t": frozenset(['allocation_ratio', 'equal_variance', 'looks']),
+    "logrank_two_arm": frozenset(['allocation_ratio', 'control_hazard', 'accrual_years', 'followup_years', 'dropout_hazard']),
+    "rope_equivalence_t": frozenset(['allocation_ratio', 'prior_sd', 'rope_threshold']),
+}
+
+EFFECT_FIELDS = {
+    "ancova": frozenset(['cohens_f', 'parameterization']),
+    "bayes_factor_t": frozenset(['cohens_d', 'parameterization']),
+    "chi_square_gof": frozenset(['cohens_w', 'p_alternative', 'p_null', 'parameterization']),
+    "chi_square_independence": frozenset(['joint_probabilities', 'parameterization']),
+    "correlation": frozenset(['parameterization', 'rho']),
+    "factorial_anova": frozenset(['cohens_f', 'parameterization']),
+    "group_sequential_t": frozenset(['cohens_d', 'parameterization']),
+    "incremental_regression": frozenset(['cohens_f2', 'parameterization']),
+    "linear_regression": frozenset(['cohens_f2', 'parameterization']),
+    "logistic_regression": frozenset(['odds_ratio', 'p_baseline', 'parameterization']),
+    "logrank_two_arm": frozenset(['hazard_ratio', 'p_event', 'parameterization']),
+    "mediation_indirect": frozenset(['a_path', 'b_path', 'direct_cprime', 'parameterization']),
+    "meta_analysis_fixed": frozenset(['cohens_d', 'parameterization']),
+    "meta_analysis_random": frozenset(['cohens_d', 'parameterization']),
+    "moderation": frozenset(['cohens_f2', 'parameterization']),
+    "noninferiority_t": frozenset(['margin', 'parameterization', 'sd', 'true_difference']),
+    "one_sample_proportion": frozenset(['p_alternative', 'p_null', 'parameterization']),
+    "one_way_anova": frozenset(['cohens_f', 'parameterization']),
+    "ordinal_regression": frozenset(['baseline_category_probs', 'odds_ratio', 'parameterization']),
+    "paired_t": frozenset(['cohens_dz', 'parameterization']),
+    "planned_contrast": frozenset(['cohens_f', 'parameterization']),
+    "poisson_regression": frozenset(['parameterization', 'rate_ratio']),
+    "rope_equivalence_t": frozenset(['lower_bound', 'parameterization', 'sd', 'true_difference', 'upper_bound']),
+    "tost_equivalence": frozenset(['lower_bound', 'parameterization', 'sd', 'true_difference', 'upper_bound']),
+    "two_sample_proportion": frozenset(['p_group1', 'p_group2', 'parameterization']),
+    "two_sample_t": frozenset(['cohens_d', 'parameterization']),
+    "welch_t": frozenset(['mean_difference', 'parameterization', 'sd_group1', 'sd_group2']),
+}
+COMMON_DESIGN_FIELDS = frozenset({"attrition_rate", "family_alpha", "primary_tests"})
+
+
 def model_framework(model: str) -> Framework:
     if model in {"bayes_factor_t", "rope_equivalence_t"}:
         return "bayesian"
@@ -82,6 +144,31 @@ class Scenario:
             raise ValueError("Unrecognized model or goal")
         if self.framework != model_framework(self.model):
             raise ValueError(f"{self.model} requires framework={model_framework(self.model)}")
+        from .contracts import finite_tree, numeric_parameters
+        numeric_parameters(self.effect)
+        finite_tree(self.design)
+        unknown_effect = set(self.effect) - EFFECT_FIELDS[self.model]
+        if unknown_effect:
+            raise ValueError(f"Unsupported effect fields for {self.model}: {', '.join(sorted(unknown_effect))}")
+        unknown = set(self.design) - DESIGN_FIELDS[self.model] - COMMON_DESIGN_FIELDS
+        if unknown:
+            raise ValueError(f"Unsupported design fields for {self.model}: {', '.join(sorted(unknown))}")
+        tests = self.design.get("primary_tests", 1)
+        if isinstance(tests, bool) or not isinstance(tests, (int, float)) or tests < 1 or tests > 10_000_000 or int(tests) != tests:
+            raise ValueError("primary_tests must be a positive integer")
+        if self.decision_rule.multiplicity_method == "none" and tests != 1:
+            raise ValueError("Multiple primary tests require an explicit multiplicity planning adjustment")
+        family = self.design.get("family_alpha")
+        if family is not None:
+            if isinstance(family, bool) or not isinstance(family, (int, float)) or not 0 < family < 1:
+                raise ValueError("family_alpha must lie in (0,1)")
+            divisor = tests if self.decision_rule.multiplicity_method != "none" else 1
+            if abs(self.decision_rule.alpha - family / divisor) > 1e-14:
+                raise ValueError("Family and per-test alpha do not match the declared multiplicity rule")
+        if self.model == "correlation" and self.design.get("distribution", "bivariate_normal") != "bivariate_normal":
+            raise ValueError("The correlation reference assumes a bivariate_normal distribution")
+        if self.model == "group_sequential_t" and self.design.get("equal_variance") is False:
+            raise ValueError("The sequential reference assumes equal variances")
         for key, value in self.design.items():
             if isinstance(value, bool) and key not in {"equal_variance", "hartung_knapp"}:
                 raise ValueError(f"{key} must be a numeric or explicitly supported categorical parameter, not boolean")
@@ -356,6 +443,11 @@ class Scenario:
             raise ValueError(f"{label} probabilities must lie strictly between 0 and 1")
         if abs(sum(null_values) - 1) > 1e-10 or abs(sum(alternative_values) - 1) > 1e-10 or null_values == alternative_values:
             raise ValueError(f"{label} probability arrays must each sum to 1 and differ")
+        if "cohens_w" in self.effect:
+            from math import isclose, sqrt
+            derived = sqrt(sum((a - p) ** 2 / p for a, p in zip(alternative_values, null_values)))
+            if not isclose(self.effect["cohens_w"], derived, rel_tol=1e-10, abs_tol=1e-12):
+                raise ValueError("Declared cohens_w conflicts with the supplied probability vectors")
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

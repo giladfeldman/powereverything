@@ -1,7 +1,7 @@
 """Conservative capabilities: unsupported goals are never silently substituted."""
 from typing import get_args
 
-from .schema import Model
+from .schema import COMMON_DESIGN_FIELDS, DESIGN_FIELDS, EFFECT_FIELDS, Model
 
 DEFAULT_TARGET_POWER = 0.95
 FIXED_MODELS = {
@@ -16,7 +16,8 @@ R_MODELS = {"two_sample_t", "welch_t", "paired_t", "one_way_anova", "linear_regr
 
 def capabilities() -> dict:
     return {"schema_version": "1.0", "default_target_power": DEFAULT_TARGET_POWER, "methods": [
-        {"model": model, "goals": ["required_sample_size"] + (["achieved_power", "sensitivity"] if model in FIXED_MODELS else []),
+        {"model": model, "allowed_effect_fields": sorted(EFFECT_FIELDS[model]),
+         "allowed_design_fields": sorted(DESIGN_FIELDS[model] | COMMON_DESIGN_FIELDS), "goals": ["required_sample_size"] + (["achieved_power", "sensitivity"] if model in FIXED_MODELS else []),
          "validation_scope": "representative_fixture_matrix_not_arbitrary_inputs", "python": True, "r": model in R_MODELS, "webr": model in R_MODELS,
          "fixed_sample_limitation": None if model in FIXED_MODELS else "A validated fixed-sample inversion has not yet been implemented.",
          "webr_status": "validated_representative_cases_webr_0.6.0" if model in R_MODELS else "unavailable"}

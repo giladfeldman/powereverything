@@ -12,6 +12,19 @@ version and only when a method's answers change. See
 
 ## 0.9.0 — release candidate, not yet published
 
+- Strict model-specific effect/design fields reject unsupported adjustments and
+  inconsistent derived GOF effects; capabilities expose the accepted field names.
+  Legitimate logistic allocation and other supported variants remain covered by R.
+- Reporting template 1.4 matches BIC case selection, the actual default ROPE
+  threshold and solved sensitivity effects. It preserves chronology limitations.
+- Sharing refuses empty/incomplete numeric results. Bundle export verifies the
+  saved input hash and generates a substantive canonical Markdown report.
+- Rewrite validation screens reproduced model/unit changes, invented evidence claims
+  and removal of the hypothetical-effect caveat. These are bounded screens and do
+  not certify semantic equivalence; all proposals still require confirmation.
+- AI proposal validation withholds unrepresentable numbers, including overflow
+  during percentage scaling; invalid confirmed numbers raise validation errors.
+
 - Operation policy 1.3 validates framework/model agreement and integer wizard counts,
   rejects boolean numerical design values and conflicting sample units, and includes
   derived independent-arm totals in canonical requests. Valid numerical kernels are unchanged.

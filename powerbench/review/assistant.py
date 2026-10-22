@@ -8,9 +8,10 @@ import json
 import re
 from copy import deepcopy
 from importlib import resources
-from math import isfinite
 
 from .evidence import (
+    _finite_number,
+    _rewrite_design_matches,
     code_support,
     finding_supported,
     numeric_claims,
@@ -54,7 +55,7 @@ def _numbers(value):
     if isinstance(value, bool):
         return []
     if isinstance(value, (int, float)):
-        if not isfinite(value):
+        if not _finite_number(value):
             raise ValueError("Nonfinite confirmed value")
         return [float(value)]
     if isinstance(value, dict):
@@ -101,6 +102,8 @@ def validate_assistance(task: str, text: str, proposed: dict, confirmed: dict | 
                 raise ValueError("Preserve numeric notation; new written-number claims require manual review")
         if not rewrite_labels_match(paragraph,confirmed):
             raise ValueError("Rewrite changed a labeled scientific quantity")
+        if not _rewrite_design_matches(paragraph, confirmed):
+            raise ValueError("Rewrite changed a scientific design/unit or introduced an unsupported evidence claim")
         if not confirmed.get("effect_rationale") and "[effect rationale needed]" not in paragraph.lower():
             raise ValueError("Unknown effect rationale must remain an explicit placeholder")
         if re.search(r"https?://|doi\s*:", paragraph, re.IGNORECASE):
@@ -131,7 +134,7 @@ def validate_assistance(task: str, text: str, proposed: dict, confirmed: dict | 
             supported = isinstance(quote, str) and bool(quote) and quote in text
             if name in {"n_per_group", "effect", "alpha"} and value is not None:
                 numbers = numeric_tokens(quote or "")
-                supported = supported and isinstance(value, (int, float)) and not isinstance(value, bool) and isfinite(value) and any(abs(value-number) <= 1e-10 for number in numbers)
+                supported = supported and _finite_number(value) and any(abs(value-number) <= 1e-10 for number in numbers)
             supported = supported and value is not None and code_support(name,value,quote)
             values[name] = {"value": value if supported else None, "proposed_value": value, "quote": quote, "confirmed": False, "status": "reported" if supported else "ambiguous"}
         result["fields"] = values

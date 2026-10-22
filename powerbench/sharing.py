@@ -44,6 +44,8 @@ def anonymous_snapshot(result: dict) -> dict:
         sanitized["domain"] = {k: v for k, v in request["domain"].items() if k in {"lower", "upper", "direction", "parameter"}}
     normalized, _ = normalize(sanitized)
     original = result.get("result", result.get("reference", {}))
+    if not isinstance(original, dict) or not original:
+        raise ValueError("A complete numeric result is required for sharing")
     values = {k: _numeric(v) for k, v in original.items() if k in {"n1", "n2", "n_total", "n_per_group", "n_per_cell", "power", "target_power", "detectable_effect", "cohens_w", "n_events"}}
     if result.get("status", "complete") != "complete":
         raise ValueError("Only completed results may be shared")
@@ -61,6 +63,9 @@ def anonymous_snapshot(result: dict) -> dict:
     replay = analyze(normalized)
     if replay.get("status") != "complete":
         raise ValueError("Sanitized request did not reproduce a complete result")
+    expected_fields = set(replay["result"]) & {"n1", "n2", "n_total", "n_per_group", "n_per_cell", "power", "target_power", "detectable_effect", "cohens_w", "n_events"}
+    if set(values) != expected_fields:
+        raise ValueError("Stored result is missing required scientific quantities")
     for key, value in values.items():
         expected = replay["result"].get(key)
         if expected is None or not isclose(value, expected, rel_tol=1e-12, abs_tol=1e-12):

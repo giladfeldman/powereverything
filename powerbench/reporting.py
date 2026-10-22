@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from .schema import Scenario
 
-TEMPLATE_VERSION = "1.3"
+TEMPLATE_VERSION = "1.4"
 
 
 def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | None = None, family_alpha: float | None = None) -> dict:
@@ -21,7 +21,7 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
     if s.model == "logrank_two_arm":
         unit = "participants (event-driven log-rank design)"
     if s.framework == "bayesian":
-        criterion = ((f"BIC-style approximate BF10 threshold {s.design.get('bf_threshold')}" if s.design.get('bf_method','jzs')=='bic' else f"BF10 threshold {s.design.get('bf_threshold')} under the stated Cauchy prior") if s.model == "bayes_factor_t" else f"posterior ROPE probability threshold {s.design.get('rope_threshold')}")
+        criterion = ((f"BIC-style approximate BF10 threshold {s.design.get('bf_threshold')}" if str(s.design.get('bf_method','jzs')).lower()=='bic' else f"BF10 threshold {s.design.get('bf_threshold')} under the stated Cauchy prior") if s.model == "bayes_factor_t" else f"posterior ROPE probability threshold {s.design.get('rope_threshold', .95)}")
         rule = f"The success criterion was {criterion}."
     else:
         test = {"noninferiority_t": "a one-sided non-inferiority test", "tost_equivalence": "two one-sided equivalence tests", "mediation_indirect": "joint significance of two-sided path tests"}.get(s.model)
@@ -69,5 +69,5 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
         body += "Recruitment inflation uses expected retention and ceilings within each declared arm/cell; it does not guarantee realized retention. "
     return {"template_version": TEMPLATE_VERSION, "apa": body, "amj": body, "ready_to_insert": False,
             "author_tasks": ["Confirm when this analysis was conducted before describing it as a priori.", "Supply and cite the effect rationale or smallest effect of interest.", "Confirm the planned analysis, units, multiplicity and missing-data assumptions."],
-            "distinctions": {"target_effect": effect_text + " (planning assumption, not an observed effect)", "family_alpha": family_alpha if family_alpha is not None else alpha,
+            "distinctions": {"target_effect": (f"{result['effect_parameter']} = {result['detectable_effect']:.9g} (solved detectable effect)" if s.goal == "sensitivity" else effect_text + " (planning assumption, not an observed effect)"), "family_alpha": family_alpha if family_alpha is not None else alpha,
                              "test_alpha": alpha, "analysable_n": n, "recruitment_n": recruitment if recruitment is not None else n, "framework": s.framework}}

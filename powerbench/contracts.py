@@ -15,8 +15,12 @@ SCHEMA_VERSION = "1.0"
 
 
 def finite_tree(value: Any) -> None:
-    if isinstance(value, float) and not isfinite(value):
-        raise ValueError("Nonfinite numbers are not valid inputs")
+    if isinstance(value, (int, float)):
+        try:
+            if not isfinite(value):
+                raise ValueError("Nonfinite numbers are not valid inputs")
+        except OverflowError:
+            raise ValueError("Numbers must be representable as finite scientific inputs") from None
     if isinstance(value, dict):
         for item in value.values():
             finite_tree(item)
@@ -34,8 +38,10 @@ def numeric_parameters(value: Any, path: str = "effect") -> None:
     elif isinstance(value, list):
         for item in value:
             numeric_parameters(item, path)
-    elif isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value):
-        raise ValueError(f"{path} must contain finite numbers")
+    else:
+        finite_tree(value)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{path} must contain finite numbers")
 
 
 def normalize(request: dict) -> tuple[dict, Scenario]:

@@ -1,8 +1,18 @@
 """Conservative lexical support, never semantic or statistical certification."""
 import re
-from math import isclose
+from math import isclose, isfinite
 
 NUMBER=r"(?<![\w.\-+−–—])[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?"
+
+
+def _finite_number(value: object) -> bool:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return isfinite(value)
+    except OverflowError:
+        return False
+
 
 def numeric_claims(text: str) -> list[tuple[float, bool]]:
     normalized=text.replace('−','-').replace('–','-').replace('—','-')
@@ -133,3 +143,41 @@ def rewrite_labels_match(paragraph: str, confirmed: dict) -> bool:
         for claim in labeled_numbers(field,paragraph):
             if allowed and not any(isclose(claim,value,rel_tol=1e-10,abs_tol=1e-12) for value in allowed):return False
     return True
+
+
+def _rewrite_design_matches(paragraph: str, confirmed: dict) -> bool:
+    """Bounded design/claim screens; this does not certify prose equivalence."""
+    request = confirmed.get("canonical_request", {})
+    scenario = request.get("scenario", {}) if isinstance(request, dict) else {}
+    model = scenario.get("model", confirmed.get("model")) if isinstance(scenario, dict) else confirmed.get("model")
+    result = confirmed.get("canonical_result", {})
+    result = result if isinstance(result, dict) else {}
+    canonical = confirmed.get("canonical_paragraph", "")
+    canonical = canonical if isinstance(canonical, str) else ""
+    pairs = r"\bcomplete pairs\b|\bpaired[ -](?:samples?|t(?:[ -]test)?)\b"
+    if model != "paired_t" and re.search(pairs, paragraph, re.IGNORECASE):
+        return False
+    if model == "paired_t" and re.search(r"\bindependent (?:participants|subjects|observations|groups)\b|\bper[ -]group\b", paragraph, re.IGNORECASE):
+        return False
+    incompatible = {
+        "welch_t": r"\bwelch(?:[ -]satterthwaite)?\b",
+        "incremental_regression": r"\b(?:incremental|hierarchical|blockwise) regression\b",
+        "linear_regression": r"\boverall linear regression\b",
+        "one_way_anova": r"\bone[ -]way (?:anova|analysis of variance)\b",
+        "correlation": r"\bpearson correlation\b",
+    }
+    for identifier, pattern in incompatible.items():
+        if model != identifier and re.search(pattern, paragraph, re.IGNORECASE):
+            return False
+    common = result.get("n_per_group")
+    if "n1" in result and result.get("n1") == result.get("n2"):
+        common = result["n1"]
+    pattern = "(" + NUMBER + r")\s*(?:(?:observations|participants|subjects)\s*)?(?:per[ -]group|in each group)\b"
+    for match in re.finditer(pattern, paragraph, re.IGNORECASE):
+        value = float(match.group(1))
+        if common is None or not _finite_number(value) or not isclose(value, common, rel_tol=1e-10, abs_tol=1e-12):
+            return False
+    if ("planning assumption" in canonical.lower() or "hypothetical effect" in canonical.lower()) and not re.search(r"\bplanning assumption\b|\bhypothetical (?:planning )?effect\b|\bassumed effect\b", paragraph, re.IGNORECASE):
+        return False
+    rationale_claim = r"\b(?:informed by|based on|derived from|supported by)\s+(?:(?:a|the|prior|previous|published|existing)\s+)*(?:meta[ -]anal\w*|evidence|studies|literature)\b"
+    return not (not confirmed.get("effect_rationale") and re.search(rationale_claim, paragraph, re.IGNORECASE) and not re.search(rationale_claim, canonical, re.IGNORECASE))

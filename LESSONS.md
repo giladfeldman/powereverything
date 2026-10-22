@@ -19,3 +19,31 @@ Canonical sample counts must use the same bounds whether supplied or derived. Pa
 ## 2026-10-22 - Keep legacy exports explicit
 
 The planner stores its numeric calculation under reference rather than result. Compatibility export must compare that dictionary with a canonical plan replay, retaining all version guards. A present falsey result must not trigger fallback. Regenerate all bundle artifacts and disclose that the calculation bundle excludes legacy simulations/sweeps; full wizard reproduction remains separate. A watched-red legacy planner regression covers the real caller.
+
+## 2026-10-22 - Reject unused scientific fields
+
+Unknown model-specific effect/design fields can appear in deterministic paragraphs without affecting the calculation. Explicit allowlists now reject them and are exposed in capabilities. Supplied GOF w must agree with the probability vectors. Preserve genuinely supported variants such as binary logistic allocation; its independent R adapter regression detected an initially incomplete allowlist.
+
+## 2026-10-22 - Keep multiplicity declarations consistent
+
+Unadjusted multiple primary tests must not silently disappear from wizard metadata. Family alpha must match the per-test rule, and explicit invalid counts never default to one. Contract and wizard regressions cover both paths.
+
+## 2026-10-22 - Report the criterion actually computed
+
+Case-insensitive BIC selection and default ROPE thresholds must be reflected in manuscript text. Sensitivity output must describe the solved effect rather than the temporary internal placeholder. Template 1.4 fixes reproduced controls without changing numerical kernels.
+
+## 2026-10-22 - Require complete snapshot quantities
+
+Empty/null stored result dictionaries could yield an apparently complete anonymous snapshot or an AttributeError. Require a numeric dictionary with the same scientific quantity keys as the replay before comparison.
+
+## 2026-10-22 - Bind export inputs to their saved hash
+
+A request change that leaves analytic N unchanged can still change recruitment. Verify the stored input hash before exporting, reconstruct all artifacts, and generate a substantive canonical report.md instead of hashing an empty report.
+
+## 2026-10-22 - Bound AI numeric conversion
+
+Representable JSON integers can exceed floating-point range; percentage scaling can overflow even when the unscaled integer is finite. Withhold unsupported proposals and raise validation errors for invalid confirmed inputs. Four watched-red controls cover extraction, static code inspection and rewrite confirmation.
+
+## 2026-10-22 - Bind rewrite design and evidence claims
+
+Keeping a confirmed JSON record unchanged does not keep the paragraph true. Five watched-red mutations changed independent samples into pairs, doubled per-group units, asserted a different test, invented a prior-evidence rationale or removed the hypothetical-effect caveat. Bounded model/unit/claim screens now reject those mutations. They remain conservative lexical controls, not semantic certification; proposals still require source and author confirmation.

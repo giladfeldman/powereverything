@@ -101,6 +101,9 @@ def export_bundle(result: dict) -> bytes:
     if stored.get("method_id") in METHOD_VERSIONS and stored.get("method_version") != METHOD_VERSIONS[stored["method_id"]]:
         raise ValueError("Historical method version requires its original implementation for bundle export")
     request = result.get("normalized_request", result.get("scenario", {}))
+    from .provenance import input_hash
+    if stored.get("input_sha256") != input_hash(request):
+        raise ValueError("Stored scientific input hash does not match the export request")
     if not stored.get("method_id") or not stored.get("method_version"):
         raise ValueError("Complete method provenance is required")
     from .api import analyze
@@ -129,7 +132,7 @@ def export_bundle(result: dict) -> bytes:
         "request.json": json.dumps(request, indent=2, allow_nan=False),
         "result.json": json.dumps(result, indent=2, allow_nan=False),
         "provenance.json": json.dumps(result.get("provenance", {}), indent=2),
-        "report.md": result.get("report_markdown", ""),
+        "report.md": "# Scientific calculation\n\n" + result.get("reporting", {}).get("apa", "") + "\n\nInputs, results and software provenance are in request.json, result.json and provenance.json. Run reproduce.py to recalculate this canonical result.\n",
         "reporting.txt": result.get("reporting", {}).get("apa", ""),
         "requirements.lock.txt": "\n".join([f"powerbench=={__version__}"] + [f"{k}=={v}" for k, v in result.get("provenance", {}).get("dependencies", {}).items()]) + "\n",
     }

@@ -20,7 +20,7 @@ def _number(payload: dict[str, Any], key: str) -> float:
         number=float(value)
         if not isfinite(number):raise ValueError("Scientific inputs must be finite")
         return number
-    except (KeyError, TypeError, ValueError) as error:
+    except (KeyError, TypeError, ValueError, OverflowError) as error:
         raise ValueError(f"{key.replace('_', ' ').capitalize()} must be a number.") from error
 
 
@@ -54,6 +54,8 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         raise ValueError("multiplicity_method must be none, bonferroni, or hochberg.")
     from .power import count
     primary_tests = count(payload["primary_tests"], "primary_tests", 1) if "primary_tests" in payload else 1
+    if multiplicity_method == "none" and primary_tests != 1:
+        raise ValueError("Multiple primary tests require an explicit multiplicity planning adjustment")
     if primary_tests < 1:
         raise ValueError("Number of primary tests must be at least 1.")
     # Hochberg step-up planning for equal-weight primaries uses the most stringent step (alpha/m),

@@ -13,7 +13,7 @@ def count(value: float | str | None, name: str, minimum: int = 2) -> int:
         raise ValueError(f"{name} must be an integer >= {minimum}")
     try:
         number = float(value)
-    except (ValueError, TypeError) as exc:
+    except (ValueError, TypeError, OverflowError) as exc:
         raise ValueError(f"{name} must be an integer >= {minimum}") from exc
     if not isfinite(number) or not number.is_integer() or number < minimum or number > 10_000_000:
         raise ValueError(f"{name} must be an integer from {minimum} to 10,000,000")

@@ -3,9 +3,9 @@
 """Public, versioned extraction contract shared by applications and evaluation."""
 import json
 import re
-from math import isclose, isfinite
+from math import isclose
 
-from .evidence import anchored_number, lexical_support, numeric_tokens
+from .evidence import _finite_number, anchored_number, lexical_support, numeric_tokens
 
 PROMPT_VERSION = "2026-10-22.7"
 FIELDS = ("model", "kind", "effect", "effect_metric", "alpha", "alternative", "target_power", "reported_n", "n_unit", "allocation_ratio", "attrition_rate", "software", "groups", "predictors", "total_predictors", "tested_predictors", "studies", "tau", "looks", "categories", "sd_group1", "sd_group2", "multiplicity_method", "family_alpha", "primary_tests")
@@ -65,7 +65,7 @@ def validate_extraction(text: str, proposed: dict) -> dict:
             supported = matched
             if value is not None and numeric:
                 tokens = numeric_tokens(quote or "")
-                supported = matched and isinstance(value, (int, float)) and not isinstance(value, bool) and isfinite(value) and any(isclose(value, token, rel_tol=1e-10, abs_tol=1e-12) or (name in {"alpha", "target_power", "attrition_rate"} and re.search(r"%|percent", quote or "", re.IGNORECASE) and isclose(value * 100, token, rel_tol=1e-10, abs_tol=1e-12)) for token in tokens)
+                supported = matched and _finite_number(value) and any(isclose(value, token, rel_tol=1e-10, abs_tol=1e-12) or (name in {"alpha", "target_power", "attrition_rate"} and re.search(r"%|percent", quote or "", re.IGNORECASE) and isclose(float(value) * 100, token, rel_tol=1e-10, abs_tol=1e-12)) for token in tokens)
             if name in {"model", "kind", "effect_metric", "alternative", "n_unit", "software", "multiplicity_method"}:
                 supported = supported and isinstance(value, str) and bool(value.strip()) and len(value) <= 200
             if name == "model" and value is not None:
