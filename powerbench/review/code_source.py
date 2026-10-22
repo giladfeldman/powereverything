@@ -1,7 +1,7 @@
 """Read a single literal power call as data. Never execute source or expressions."""
 import ast
-from math import isfinite
 import re
+from math import isfinite
 
 
 def _number(node):
@@ -9,7 +9,7 @@ def _number(node):
         value=node.value
     elif isinstance(node,ast.UnaryOp) and isinstance(node.op,(ast.USub,ast.UAdd)) and isinstance(node.operand,ast.Constant) and isinstance(node.operand.value,(int,float)) and not isinstance(node.operand.value,bool):
         value=(-1 if isinstance(node.op,ast.USub) else 1)*node.operand.value
-    else:raise ValueError('Not a scalar literal')
+    else:raise ValueError('Not a scalar literal')  # noqa: TRY004 - source validation uses ValueError
     if value is None or isinstance(value,str):return value
     if isinstance(value,bool) or not isinstance(value,(int,float)) or not isfinite(value):raise ValueError('Not a finite scalar literal')
     return value
@@ -37,11 +37,11 @@ def literal_power_call(text):
     if not isinstance(text,str) or len(text)>100000:return {}
     try:
         r=_r_without_comments(text)
-        match=re.fullmatch(r'(?:[A-Za-z_]\w*\s*(?:<-|=)\s*)?(?:pwr::)?pwr\.t\.test\s*\(([^()]*)\)\s*;?',r,re.S)
+        match=re.fullmatch(r'(?:[A-Za-z_]\w*\s*(?:<-|=)\s*)?(?:pwr::)?pwr\.t\.test\s*\(([^()]*)\)\s*;?',r,re.DOTALL)
         if match:
             arguments={}
             for item in match.group(1).split(','):
-                pair=re.fullmatch(r'\s*([A-Za-z_][\w.]*)\s*=\s*(.*?)\s*',item,re.S)
+                pair=re.fullmatch(r'\s*([A-Za-z_][\w.]*)\s*=\s*(.*?)\s*',item,re.DOTALL)
                 if not pair or pair.group(1) in arguments:return {}
                 key,raw=pair.groups()
                 if key not in {'n','d','sig.level','power','type','alternative'}:return {}

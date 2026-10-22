@@ -1,10 +1,12 @@
 """Sonnet 2026-10-22 findings, reproduced before correction."""
-from dataclasses import replace
 import math
+
 import pytest
+
+from powerbench.references import paired_t_power, welch_t_power
 from powerbench.review.assistant import validate_assistance
 from powerbench.review.prompts import validate_extraction
-from powerbench.references import paired_t_power,welch_t_power
+
 
 @pytest.mark.parametrize('source,field,value',[
  ('pwr.t.test(n=20*2,d=.5,sig.level=.05/3,type="two.sample")','n_per_group',20),
@@ -101,10 +103,10 @@ def test_rewrite_cannot_hide_an_invented_quantity_in_number_words():
  with pytest.raises(ValueError):validate_assistance('rewrite','A draft.',{'confirmed':confirmed,'paragraph':'We enrolled sixty-five participants. [effect rationale needed]'},confirmed)
 
 def test_sensitivity_rejects_injected_nonfinite_power_before_root_search(monkeypatch):
- from powerbench.api import analyze
- from powerbench.schema import load_scenario
- from pathlib import Path
  import json
+ from pathlib import Path
+
+ from powerbench.api import analyze
  source=next(json.loads(path.read_text()) for path in (Path(__file__).parents[1]/'powerbench/resources/scenarios').glob('*.json') if json.loads(path.read_text())['model']=='paired_t')
  source['goal']='sensitivity';source['effect'].pop('cohens_dz')
  monkeypatch.setattr('powerbench.references.paired_t_power',lambda *args:float('nan'))
@@ -112,10 +114,11 @@ def test_sensitivity_rejects_injected_nonfinite_power_before_root_search(monkeyp
 
 
 def test_logrank_minimum_is_global_within_the_declared_discrete_rule():
+ import json
+ from pathlib import Path
+
  from powerbench.api import analyze
  from powerbench.specialist_extras import derive_logrank_event_probability
- from pathlib import Path
- import json
  source=next(json.loads(path.read_text()) for path in (Path(__file__).parents[1]/'powerbench/resources/scenarios').glob('*.json') if json.loads(path.read_text())['model']=='logrank_two_arm')
  source['target_power']=.06627943457127596
  source['effect']={'hazard_ratio':10,'p_event':derive_logrank_event_probability(10,.01,0,.5,0,.01)}

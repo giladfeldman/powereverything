@@ -1,7 +1,8 @@
 """Quoted numbers must also match their code argument and sample unit."""
-from copy import deepcopy
 import pytest
+
 from powerbench.review.assistant import validate_assistance
+
 
 @pytest.mark.parametrize('source,field,value',[
  ('pwr::pwr.t.test(n=40,d=.4,sig.level=.05,type="paired")','n_per_group',40),

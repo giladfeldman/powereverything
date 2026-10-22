@@ -8,7 +8,7 @@ def numeric_claims(text):
     normalized=text.replace('−','-').replace('–','-').replace('—','-')
     normalized=re.sub(r'(?<=\d)-(?=[.\d])',' -',normalized)
     normalized=re.sub(r'(?<![\w.])\d{1,3}(?:,\d{3})+(?:\.\d+)?',lambda match:match.group().replace(',',''),normalized)
-    return [(float(match.group()),bool(re.match(r'\s*(?:%|percent\b)',normalized[match.end():],re.I))) for match in re.finditer(NUMBER,normalized)]
+    return [(float(match.group()),bool(re.match(r'\s*(?:%|percent\b)',normalized[match.end():],re.IGNORECASE))) for match in re.finditer(NUMBER,normalized)]
 
 
 def numeric_tokens(text):
@@ -16,9 +16,9 @@ def numeric_tokens(text):
 
 def lexical_support(name,value,quote):
     if not isinstance(quote,str):return False
-    if name=='model' and value=='two_sample_t' and re.search(r'\bwelch\b',quote,re.I):return False
-    if name=='model' and value=='welch_t' and re.search(r'\b(?:not|never|no)\b.{0,25}\bwelch\b|\bwelch\b.{0,25}\b(?:not|never)\b',quote,re.I):return False
-    if name=='effect_metric' and value=='cohens_f':return bool(re.search(r'\bcohens_f\b|\bcohen[’\']?s?\s+f\b',quote,re.I) or re.search(r'\bf\s*=',quote))
+    if name=='model' and value=='two_sample_t' and re.search(r'\bwelch\b',quote,re.IGNORECASE):return False
+    if name=='model' and value=='welch_t' and re.search(r'\b(?:not|never|no)\b.{0,25}\bwelch\b|\bwelch\b.{0,25}\b(?:not|never)\b',quote,re.IGNORECASE):return False
+    if name=='effect_metric' and value=='cohens_f':return bool(re.search(r'\bcohens_f\b|\bcohen[’\']?s?\s+f\b',quote,re.IGNORECASE) or re.search(r'\bf\s*=',quote))
     patterns={
       'alternative':{'two.sided':r'\btwo[ -](?:sided|tailed)\b','greater':r'\b(?:greater|upper[ -]tailed|positive direction)\b','less':r'\b(?:less|lower[ -]tailed|negative direction)\b'},
       'multiplicity_method':{'none':r'\b(?:none|unadjusted|no (?:multiplicity |multiple.testing )?adjustment|single primary test)\b','bonferroni':r'\bbonferroni\b','hochberg':r'\bhochberg\b'},
@@ -63,13 +63,13 @@ def labeled_numbers(name,quote):
     label=_NUMBER_LABELS.get(name)
     if not label or not isinstance(quote,str):return []
     text=quote.replace('−','-')
-    if name=='alpha' and re.search(r'cronbach|coefficient\s+alpha|reliability',text,re.I):return []
+    if name=='alpha' and re.search(r'cronbach|coefficient\s+alpha|reliability',text,re.IGNORECASE):return []
     pattern=r'(?<!\w)(?:'+label+r')(?!\w)\s*(?:(?:was|is|of|at|rate|level|set|to|equal|equals)\s*|[=:]){0,4}\s*'+_NUMBER_LITERAL+r'\s*(%|percent\b)?(?!\w|\.\d)'
     values=[]
-    for match in re.finditer(pattern,text,re.I):
+    for match in re.finditer(pattern,text,re.IGNORECASE):
         # Reject a numeric prefix of an unevaluated expression or range.
         if re.match(r'\s*[/*+−–—:]|\s*-(?=\s*[.\d])',text[match.end():]):continue
-        if name=='target_power' and re.search(r'\b(?:observed|achieved|post[ -]?hoc)\s*$',text[max(0,match.start()-25):match.start()],re.I):continue
+        if name=='target_power' and re.search(r'\b(?:observed|achieved|post[ -]?hoc)\s*$',text[max(0,match.start()-25):match.start()],re.IGNORECASE):continue
         values.append(float(match.group(1))/(100 if match.group(2) else 1))
     return values
 
@@ -91,20 +91,20 @@ def code_support(name,value,quote):
 def finding_supported(code,quote,text):
     if not isinstance(quote,str) or len(re.findall(r"\w+",quote))<3:return False
     if code=='observed_effect_posthoc':
-        return bool(re.search(r'\bobserved\b',quote,re.I) and re.search(r'post[ -]?hoc|after (?:data )?collection|observed (?:study )?effects?',quote,re.I))
+        return bool(re.search(r'\bobserved\b',quote,re.IGNORECASE) and re.search(r'post[ -]?hoc|after (?:data )?collection|observed (?:study )?effects?',quote,re.IGNORECASE))
     if code in {'missing_alpha','missing_target_power','missing_attrition'}:
         field={'missing_alpha':'alpha','missing_target_power':'target_power','missing_attrition':'attrition_rate'}[code]
         return not labeled_numbers(field,text)
-    if code=='missing_sidedness':return not re.search(r'\b(?:two[ -]sided|two[ -]tailed|one[ -]sided|one[ -]tailed|greater|less)\b',text,re.I)
-    if code=='missing_allocation':return not (labeled_numbers('allocation_ratio',text) or re.search(r'\bequal\s+(?:allocation|between groups)|allocation was equal|balanced (?:groups|allocation)',text,re.I))
-    if code=='missing_effect_rationale':return not re.search(r'(?:effect rationale|smallest effect of interest|prior evidence|previous research)',text,re.I)
+    if code=='missing_sidedness':return not re.search(r'\b(?:two[ -]sided|two[ -]tailed|one[ -]sided|one[ -]tailed|greater|less)\b',text,re.IGNORECASE)
+    if code=='missing_allocation':return not (labeled_numbers('allocation_ratio',text) or re.search(r'\bequal\s+(?:allocation|between groups)|allocation was equal|balanced (?:groups|allocation)',text,re.IGNORECASE))
+    if code=='missing_effect_rationale':return not re.search(r'(?:effect rationale|smallest effect of interest|prior evidence|previous research)',text,re.IGNORECASE)
     if code=='per_group_vs_total':
         from .code_source import literal_power_call
         n=literal_power_call(quote).get('n_per_group')
-        match=re.search(r'(?:manuscript|reported|reports).*?\btotal\s+N\s*[=:]\s*(\d+)',quote,re.I|re.S)
+        match=re.search(r'(?:manuscript|reported|reports).*?\btotal\s+N\s*[=:]\s*(\d+)',quote,re.IGNORECASE|re.DOTALL)
         return isinstance(n,(int,float)) and bool(match) and int(match.group(1))!=2*n
-    if code=='missing_seed_for_simulation':return bool(re.search(r'simulat|rnorm|runif|random\.',quote,re.I) and not re.search(r'set\.seed|random_state|default_rng|seed\s*[=(]',text,re.I))
-    if code=='unreported_decision_rule':return not re.search(r'sig\.level\s*=|\balpha\s*=|\bconfidence\s*=',text,re.I)
+    if code=='missing_seed_for_simulation':return bool(re.search(r'simulat|rnorm|runif|random\.',quote,re.IGNORECASE) and not re.search(r'set\.seed|random_state|default_rng|seed\s*[=(]',text,re.IGNORECASE))
+    if code=='unreported_decision_rule':return not re.search(r'sig\.level\s*=|\balpha\s*=|\bconfidence\s*=',text,re.IGNORECASE)
     if code=='unsupported_or_ambiguous_code':
         from .code_source import literal_power_call
         return not bool(literal_power_call(quote))

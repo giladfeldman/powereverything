@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 
 from powerbench.adapters.manual_gpower import (
-    REQUIRED_FIELDS,
     CAPTURE_DIR,
+    REQUIRED_FIELDS,
     ManualGPowerAdapter,
     capture_signature,
     scenario_hash,

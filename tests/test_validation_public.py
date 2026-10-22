@@ -1,6 +1,6 @@
-from powerbench.validation import adjudicate, evaluate_scenario
 from powerbench.contracts import normalize
 from powerbench.resources import example
+from powerbench.validation import adjudicate, evaluate_scenario
 
 
 def test_no_external_result_does_not_claim_an_incapable_catalog():

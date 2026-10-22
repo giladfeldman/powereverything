@@ -1,8 +1,16 @@
 import json
+from pathlib import Path
 
 import pytest
 
-from powerbench.references import analytic_reference, chi_square_gof_power, chi_square_gof_w, paired_t_power, two_sample_t_power, welch_t_power
+from powerbench.references import (
+    analytic_reference,
+    chi_square_gof_power,
+    chi_square_gof_w,
+    paired_t_power,
+    two_sample_t_power,
+    welch_t_power,
+)
 from powerbench.schema import load_scenario
 
 
@@ -49,7 +57,7 @@ def test_incremental_regression_respects_full_model_degrees_of_freedom():
 
 
 def test_welch_reference_matches_independent_r_stats_benchmarks():
-    fixtures = json.loads(open("data/benchmarks/welch_t_r_stats.json", encoding="utf-8").read())["cases"]
+    fixtures = json.loads(Path("data/benchmarks/welch_t_r_stats.json").read_text(encoding="utf-8"))["cases"]
     for fixture in fixtures:
         inputs, expected = fixture["inputs"], fixture["expected"]
         observed = welch_t_power(**inputs)
@@ -66,7 +74,7 @@ def test_welch_reference_hits_target_and_is_minimal_at_stated_allocation():
 
 
 def test_chi_square_reference_matches_independent_r_stats_benchmark():
-    fixture = json.loads(open("data/benchmarks/chi_square_gof_r_stats.json", encoding="utf-8").read())["cases"][0]
+    fixture = json.loads(Path("data/benchmarks/chi_square_gof_r_stats.json").read_text(encoding="utf-8"))["cases"][0]
     inputs, expected = fixture["inputs"], fixture["expected"]
     assert chi_square_gof_w(inputs["p_null"], inputs["p_alternative"]) == pytest.approx(expected["cohens_w"], abs=2e-12)
     assert chi_square_gof_power(**inputs) == pytest.approx(expected["power"], abs=2e-12)

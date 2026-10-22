@@ -1,7 +1,9 @@
 """Independent high-precision log-g integration of the stated Cauchy mixture."""
 import mpmath as mp
 import pytest
+
 from powerbench.specialist_extras import jzs_bf10_from_t
+
 
 def test_extreme_jzs_matches_independent_high_precision_log_g_integral():
  with mp.workdps(60):

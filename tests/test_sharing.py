@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 from powerbench.api import analyze
 from powerbench.schema import load_scenario

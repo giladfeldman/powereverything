@@ -8,8 +8,6 @@ and calling a defect an assumption difference hides a wrong number.
 
 from __future__ import annotations
 
-import pytest
-
 from powerbench.parameterization import (
     ASSUMPTION_CATEGORIES,
     CATEGORIES,

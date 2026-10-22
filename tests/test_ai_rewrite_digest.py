@@ -1,7 +1,9 @@
 """Rewrite transport preserves the confirmed source record without copying it."""
 import pytest
-from powerbench.review.assistant import assistant_prompt,validate_assistance
+
 from powerbench.provenance import input_hash
+from powerbench.review.assistant import assistant_prompt, validate_assistance
+
 
 def test_rewrite_can_attest_to_the_exact_confirmed_record_digest():
  confirmed={'canonical_paragraph':'Two independent groups required total N=200.','chronology':'unknown','effect_rationale':None}

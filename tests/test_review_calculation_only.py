@@ -1,8 +1,9 @@
 """Confirmed code/manual assumptions can be calculated without a made-up claim."""
-from copy import deepcopy
 import pytest
+
 from powerbench.review.engine import review
 from powerbench.schema import load_scenario
+
 
 def record():
  return {'mode':'calculate','source_text':'','confirmed':True,'confirmed_request':{'operation':'plan','scenario':load_scenario('data/scenarios/two_sample_t_balanced.json').to_dict()}}

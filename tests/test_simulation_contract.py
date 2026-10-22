@@ -1,5 +1,7 @@
 import pytest
-from powerbench.simulation_lab import run,normalize_simulation
+
+from powerbench.simulation_lab import normalize_simulation, run
+
 
 def test_simulation_replay_freezes_defaults_and_seed():
     normalized=normalize_simulation({'template_id':'clustered_continuous_two_arm','replications':'5'})

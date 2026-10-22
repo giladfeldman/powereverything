@@ -1,6 +1,4 @@
-from copy import deepcopy
 
-import pytest
 
 from powerbench.review import extraction_prompt, review, validate_extraction
 from powerbench.schema import load_scenario

@@ -1,4 +1,5 @@
 import json
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -95,7 +96,10 @@ def test_group_sequential_boundaries_spend_exactly_alpha():
     import numpy as np
     from scipy.stats import multivariate_normal
 
-    from powerbench.specialist_extras import group_sequential_boundaries, group_sequential_power
+    from powerbench.specialist_extras import (
+        group_sequential_boundaries,
+        group_sequential_power,
+    )
 
     # Boundary solving runs brentq over multivariate-normal CDFs, so cost grows quickly
     # with the number of looks. Two look counts per alternative exercise both the
@@ -120,7 +124,7 @@ def test_group_sequential_boundaries_spend_exactly_alpha():
             )
 
             # Boundaries must decrease: O'Brien-Fleming is conservative early.
-            assert all(a >= b for a, b in zip(boundaries, boundaries[1:])), (
+            assert all(a >= b for a, b in pairwise(boundaries)), (
                 f"OBF boundaries must be non-increasing, got {boundaries}"
             )
 

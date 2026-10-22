@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -67,7 +68,7 @@ def test_pwrss_declines_a_continuous_predictor_logistic_design(tmp_path):
     """
     import json
 
-    payload = json.loads(open("data/scenarios/logistic_or15_p030.json", encoding="utf-8").read())
+    payload = json.loads(Path("data/scenarios/logistic_or15_p030.json").read_text(encoding="utf-8"))
     payload["design"]["predictor_type"] = "continuous"
     path = tmp_path / "logistic_continuous.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -175,7 +176,7 @@ def test_pwrss_covers_the_t_family_designs_pwr_cannot():
 def test_powersurvepi_is_a_second_independent_welch_confirmation():
     from powerbench.adapters import RPowerSurvEpiAdapter
 
-    reference, tool, classification = _classified("welch_t_heteroscedastic", RPowerSurvEpiAdapter())
+    _reference, tool, classification = _classified("welch_t_heteroscedastic", RPowerSurvEpiAdapter())
     assert (tool["n1"], tool["n2"], tool["n_total"]) == (116, 174, 290)
     assert classification.category == "compatible", classification.explanation
 
@@ -277,7 +278,7 @@ def test_specialist_declines_one_sided_meta_analysis(tmp_path):
     from powerbench.adapters import RSpecialistAdapter
 
     for name in ("meta_analysis_random_d030_tau02_k6", "meta_analysis_fixed_d030_k6"):
-        payload = json.loads(open(f"data/scenarios/{name}.json", encoding="utf-8").read())
+        payload = json.loads(Path(f"data/scenarios/{name}.json").read_text(encoding="utf-8"))
         payload["decision_rule"]["alternative"] = "greater"
         path = tmp_path / f"{name}_greater.json"
         path.write_text(json.dumps(payload), encoding="utf-8")
@@ -290,7 +291,7 @@ def test_specialist_declines_one_sided_meta_analysis(tmp_path):
 def _mutated_scenario(tmp_path, name: str, mutate):
     import json
 
-    payload = json.loads(open(f"data/scenarios/{name}.json", encoding="utf-8").read())
+    payload = json.loads(Path(f"data/scenarios/{name}.json").read_text(encoding="utf-8"))
     mutate(payload)
     path = tmp_path / f"{name}_variant.json"
     path.write_text(json.dumps(payload), encoding="utf-8")

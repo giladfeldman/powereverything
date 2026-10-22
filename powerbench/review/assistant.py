@@ -10,7 +10,13 @@ from copy import deepcopy
 from importlib import resources
 from math import isfinite
 
-from .evidence import code_support, numeric_tokens, numeric_claims, finding_supported, rewrite_labels_match
+from .evidence import (
+    code_support,
+    finding_supported,
+    numeric_claims,
+    numeric_tokens,
+    rewrite_labels_match,
+)
 from .prompts import PROMPT_VERSION, extraction_prompt, validate_extraction
 
 TASKS = ("extraction", "audit", "rewrite", "code")

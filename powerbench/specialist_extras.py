@@ -11,7 +11,7 @@ from scipy.optimize import brentq
 from scipy.stats import chi2, multivariate_normal, nct, norm
 from scipy.stats import t as student_t
 
-from .references import required_n_two_sample_t, _noncentral_t_power
+from .references import _noncentral_t_power, required_n_two_sample_t
 from .schema import Scenario
 from .search import SearchBudgetExceeded, check_search_budget
 

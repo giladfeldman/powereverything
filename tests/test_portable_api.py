@@ -1,7 +1,6 @@
 """Cross-runtime checks for goal semantics and executable code, not just target searches."""
 import json
 import subprocess
-from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 

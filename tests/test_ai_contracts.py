@@ -80,7 +80,11 @@ def test_rewrite_preserves_the_explicitly_disclosed_canonical_rounded_paragraph(
 
 
 def test_public_prompt_and_record_fingerprint_the_same_source_contract():
-    from powerbench.review.assistant import assistant_prompt,assistance_record,contract_fingerprint
+    from powerbench.review.assistant import (
+        assistance_record,
+        assistant_prompt,
+        contract_fingerprint,
+    )
     fingerprint=contract_fingerprint()
     assert len(fingerprint)==64
     assert assistant_prompt('extraction','A section.')['contract_sha256']==fingerprint

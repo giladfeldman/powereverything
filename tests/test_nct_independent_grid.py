@@ -1,10 +1,13 @@
 """Finite reflected tails independently checked against installed R stats."""
-from itertools import product
 import math
 import subprocess
+from itertools import product
+
 import pytest
+
 from powerbench.adapters.r_pwr import _resolve_rscript
 from powerbench.references import _noncentral_t_power
+
 
 def test_noncentral_t_tail_grid_matches_r_stats(tmp_path):
  script=r'''options(digits=17)
