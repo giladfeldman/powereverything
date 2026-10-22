@@ -93,3 +93,30 @@ def test_explicit_invalid_primary_test_count_is_not_replaced_by_one(primary_test
     with pytest.raises(ValueError, match="primary_tests"):
         scenario_from_fields({"model": "two_sample_t", "effect": .4, "alpha": .05,
                               "allocation_ratio": 1, "attrition_rate": 0, "primary_tests": primary_tests})
+
+
+def test_legacy_planner_bundle_exports_verified_canonical_calculation():
+    import json
+    from copy import deepcopy
+
+    from powerbench.planning import make_plan
+    result = make_plan({"model": "two_sample_t", "effect": .4, "alpha": .05,
+                        "target_power": .8, "allocation_ratio": 1, "attrition_rate": 0})
+    result["reporting"]["apa"] = "FORGED LEGACY PARAGRAPH"
+    result["reproduction"] = [{"language": "python", "code": "FORGED LEGACY CODE"}]
+    saved = deepcopy(result)
+    with zipfile.ZipFile(io.BytesIO(export_bundle(result))) as bundle:
+        canonical = json.loads(bundle.read("result.json"))
+        assert canonical["result"] == result["reference"]
+        assert b"FORGED" not in bundle.read("reproduce.py")
+        assert b"FORGED" not in bundle.read("reporting.txt")
+        assert b"Legacy wizard" in bundle.read("README.md")
+        assert b"simulation" in bundle.read("README.md")
+    assert result == saved
+    result["reference"]["n_total"] += 1
+    with pytest.raises(ValueError, match="scientific reproduction"):
+        export_bundle(result)
+    result["reference"] = saved["reference"]
+    result["result"] = None
+    with pytest.raises(ValueError, match="scientific reproduction"):
+        export_bundle(result)

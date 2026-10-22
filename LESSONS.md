@@ -15,3 +15,7 @@ A candidate producing matching values across Python dependency versions shows co
 ## 2026-10-22 - Validate sample units and every export surface
 
 Canonical sample counts must use the same bounds whether supplied or derived. Paired and other single-sample models must reject independent-arm counts; independent arms must yield a consistent total. Framework labels and integer wizard fields are scientific contracts, not display hints. Recompute all bundle presentation artifacts from the verified request: checking numeric results alone does not authenticate saved code, prose or citations. Regression controls reproduced these failures before the fixes.
+
+## 2026-10-22 - Keep legacy exports explicit
+
+The planner stores its numeric calculation under reference rather than result. Compatibility export must compare that dictionary with a canonical plan replay, retaining all version guards. A present falsey result must not trigger fallback. Regenerate all bundle artifacts and disclose that the calculation bundle excludes legacy simulations/sweeps; full wizard reproduction remains separate. A watched-red legacy planner regression covers the real caller.

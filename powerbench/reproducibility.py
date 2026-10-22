@@ -107,7 +107,13 @@ def export_bundle(result: dict) -> bytes:
     replay = analyze(request)
     if replay.get("status") != "complete" or replay.get("provenance", {}).get("method_id") != stored["method_id"] or replay.get("provenance", {}).get("method_version") != stored["method_version"]:
         raise ValueError("Stored method provenance does not match this implementation")
-    if replay.get("result") != result.get("result"):
+    # Legacy wizard records use reference for their canonical numeric result.
+    # A present result key must never fall back merely because it is falsey.
+    legacy = "result" not in result and "reference" in result
+    saved_result = result.get("reference") if legacy else result.get("result")
+    if legacy and (request.get("operation") != "plan" or not isinstance(saved_result, dict)):
+        raise ValueError("Legacy export requires a canonical plan request and reference result")
+    if replay.get("result") != saved_result:
         raise ValueError("Stored result does not match its scientific reproduction")
     # Reconstruct every executable/reporting artifact from the validated request.
     # Stored prose, scripts, citations and dependency strings are untrusted, even
@@ -115,6 +121,9 @@ def export_bundle(result: dict) -> bytes:
     result = replay
     result["provenance"].pop("execution", None)
     request = result["normalized_request"]
+    legacy_note = ("Legacy wizard records are exported here as their canonical scientific calculation. "
+                   "Legacy simulation diagnostics and assumption sweeps are not included in this calculation bundle; "
+                   "their full make_plan reproduction remains available in the original planner result.\n\n") if legacy else ""
     entries = {
         "README.md": "# Reproduce this analysis\n\nThis bundle was recomputed from the normalized request using the stated engine and method. Stored prose, scripts, citations and dependency strings were regenerated; the saved original was not modified.\n\nCreate a fresh Python environment, install requirements.lock.txt, then run reproduce.py. R, when supplied, is an independent implementation under the stated assumptions. Numerical agreement does not certify the design.\n",
         "request.json": json.dumps(request, indent=2, allow_nan=False),
@@ -124,6 +133,8 @@ def export_bundle(result: dict) -> bytes:
         "reporting.txt": result.get("reporting", {}).get("apa", ""),
         "requirements.lock.txt": "\n".join([f"powerbench=={__version__}"] + [f"{k}=={v}" for k, v in result.get("provenance", {}).get("dependencies", {}).items()]) + "\n",
     }
+    if legacy_note:
+        entries["README.md"] += "\n" + legacy_note
     entries["references.txt"] = "\n\n".join(item.get("source", "Source not yet verified") for item in result.get("citations", []))
     for item in result.get("reproduction", []):
         extension = "py" if item["language"] == "python" else "R"

@@ -15,6 +15,9 @@ version and only when a method's answers change. See
 - Operation policy 1.3 validates framework/model agreement and integer wizard counts,
   rejects boolean numerical design values and conflicting sample units, and includes
   derived independent-arm totals in canonical requests. Valid numerical kernels are unchanged.
+- Legacy wizard bundle export validates the stored reference against its canonical plan
+  and regenerates the calculation bundle. Full legacy simulation/sweep reproduction
+  remains separate and this scope is explicit in the bundle README.
 - Bundle policy 1.1 recomputes code, paragraphs, citations and dependency locks from
   the verified normalized request instead of trusting mutable saved presentation fields.
   Bundles omit wall-clock execution metadata to preserve deterministic export bytes.
