@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 Goal = Literal["required_sample_size", "achieved_power", "sensitivity"]
 Model = Literal[
@@ -40,6 +40,12 @@ Model = Literal[
 Framework = Literal["frequentist", "equivalence", "bayesian"]
 
 
+def model_framework(model: str) -> Framework:
+    if model in {"bayes_factor_t", "rope_equivalence_t"}:
+        return "bayesian"
+    return "equivalence" if model == "tost_equivalence" else "frequentist"
+
+
 @dataclass(frozen=True)
 class DecisionRule:
     alpha: float = 0.05
@@ -72,6 +78,14 @@ class Scenario:
 
     def validate(self) -> None:
         json.dumps(asdict(self),allow_nan=False)
+        if self.model not in get_args(Model) or self.goal not in get_args(Goal):
+            raise ValueError("Unrecognized model or goal")
+        if self.framework != model_framework(self.model):
+            raise ValueError(f"{self.model} requires framework={model_framework(self.model)}")
+        for key, value in self.design.items():
+            if isinstance(value, bool) and key not in {"equal_variance", "hartung_knapp"}:
+                raise ValueError(f"{key} must be a numeric or explicitly supported categorical parameter, not boolean")
+
         for key in ("equal_variance","hartung_knapp"):
             if key in self.design and not isinstance(self.design[key],bool):
                 raise ValueError(f"{key} must be boolean")

@@ -4,17 +4,17 @@ from math import isclose
 
 NUMBER=r"(?<![\w.\-+−–—])[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?"
 
-def numeric_claims(text):
+def numeric_claims(text: str) -> list[tuple[float, bool]]:
     normalized=text.replace('−','-').replace('–','-').replace('—','-')
     normalized=re.sub(r'(?<=\d)-(?=[.\d])',' -',normalized)
     normalized=re.sub(r'(?<![\w.])\d{1,3}(?:,\d{3})+(?:\.\d+)?',lambda match:match.group().replace(',',''),normalized)
     return [(float(match.group()),bool(re.match(r'\s*(?:%|percent\b)',normalized[match.end():],re.IGNORECASE))) for match in re.finditer(NUMBER,normalized)]
 
 
-def numeric_tokens(text):
+def numeric_tokens(text: str) -> list[float]:
     return [value for value,_ in numeric_claims(text)]
 
-def lexical_support(name,value,quote):
+def lexical_support(name: str, value: object, quote: str | None) -> bool:
     if not isinstance(quote,str):return False
     if name=='model' and value=='two_sample_t' and re.search(r'\bwelch\b',quote,re.IGNORECASE):return False
     if name=='model' and value=='welch_t' and re.search(r'\b(?:not|never|no)\b.{0,25}\bwelch\b|\bwelch\b.{0,25}\b(?:not|never)\b',quote,re.IGNORECASE):return False
@@ -59,7 +59,7 @@ _NUMBER_LABELS={
 }
 
 
-def labeled_numbers(name,quote):
+def labeled_numbers(name: str, quote: str | None) -> list[float]:
     label=_NUMBER_LABELS.get(name)
     if not label or not isinstance(quote,str):return []
     text=quote.replace('−','-')
@@ -74,11 +74,11 @@ def labeled_numbers(name,quote):
     return values
 
 
-def anchored_number(name,value,quote):
+def anchored_number(name: str, value: float, quote: str | None) -> bool:
     return any(isclose(number,value,rel_tol=1e-10,abs_tol=1e-12) for number in labeled_numbers(name,quote))
 
 
-def code_support(name,value,quote):
+def code_support(name: str, value: object, quote: str | None) -> bool:
     from .code_source import literal_power_call
     parsed=literal_power_call(quote)
     expected=parsed.get(name)
@@ -88,7 +88,7 @@ def code_support(name,value,quote):
     return isinstance(value,str) and value==expected
 
 
-def finding_supported(code,quote,text):
+def finding_supported(code: str, quote: str | None, text: str) -> bool:
     if not isinstance(quote,str) or len(re.findall(r"\w+",quote))<3:return False
     if code=='observed_effect_posthoc':
         return bool(re.search(r'\bobserved\b',quote,re.IGNORECASE) and re.search(r'post[ -]?hoc|after (?:data )?collection|observed (?:study )?effects?',quote,re.IGNORECASE))
@@ -111,7 +111,7 @@ def finding_supported(code,quote,text):
     return code=='analysis_match_unresolved'
 
 
-def rewrite_labels_match(paragraph,confirmed):
+def rewrite_labels_match(paragraph: str, confirmed: dict) -> bool:
     request=confirmed.get('canonical_request',{})
     scenario=request.get('scenario',{}) if isinstance(request,dict) else {}
     scenario=scenario if isinstance(scenario,dict) else {}

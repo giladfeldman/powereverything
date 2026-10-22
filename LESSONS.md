@@ -11,3 +11,7 @@ The AI review contract fingerprints exact normalized source bytes. Import format
 ## 2026-10-22 — Keep independent numerical checks distinct from compatibility
 
 A candidate producing matching values across Python dependency versions shows compatibility for those inputs. It is not an independent numerical oracle. Keep separate R comparisons, high-precision integration and simulation calibration evidence, including unresolved disagreements and approximation limits.
+
+## 2026-10-22 - Validate sample units and every export surface
+
+Canonical sample counts must use the same bounds whether supplied or derived. Paired and other single-sample models must reject independent-arm counts; independent arms must yield a consistent total. Framework labels and integer wizard fields are scientific contracts, not display hints. Recompute all bundle presentation artifacts from the verified request: checking numeric results alone does not authenticate saved code, prose or citations. Regression controls reproduced these failures before the fixes.

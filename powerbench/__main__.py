@@ -7,7 +7,7 @@ from .api import analyze
 from .capabilities import capabilities
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="PowerBench portable scientific interface")
     parser.add_argument("operation", choices=["analyze", "capabilities"])
     parser.add_argument("request", nargs="?")

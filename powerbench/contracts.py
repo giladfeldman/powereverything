@@ -6,15 +6,15 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import fields, replace
 from math import isfinite
-from typing import get_args
+from typing import Any, get_args
 
 from .capabilities import DEFAULT_TARGET_POWER, FIXED_MODELS
-from .schema import DecisionRule, Framework, Goal, Model, Scenario
+from .schema import DecisionRule, Framework, Goal, Model, Scenario, model_framework
 
 SCHEMA_VERSION = "1.0"
 
 
-def finite_tree(value):
+def finite_tree(value: Any) -> None:
     if isinstance(value, float) and not isfinite(value):
         raise ValueError("Nonfinite numbers are not valid inputs")
     if isinstance(value, dict):
@@ -25,7 +25,7 @@ def finite_tree(value):
             finite_tree(item)
 
 
-def numeric_parameters(value, path="effect"):
+def numeric_parameters(value: Any, path: str = "effect") -> None:
     if isinstance(value, dict):
         for name, item in value.items():
             if name == "parameterization":
@@ -61,7 +61,7 @@ def normalize(request: dict) -> tuple[dict, Scenario]:
     value["goal"] = goal
     value.setdefault("id", "portable-analysis")
     value.setdefault("title", "Study analysis under stated assumptions")
-    value.setdefault("framework", "frequentist")
+    value.setdefault("framework", model_framework(value.get("model")))
     value.setdefault("target_power", None if goal == "achieved_power" else DEFAULT_TARGET_POWER)
     value.setdefault("design", {})
     value.setdefault("effect", {})
@@ -128,6 +128,10 @@ def normalize(request: dict) -> tuple[dict, Scenario]:
     if raw.get("sample"):
         from .power import count
         raw["sample"] = {name: count(number, name) for name, number in raw["sample"].items()}
+        if scenario.model in FIXED_MODELS:
+            from .power import sample_design
+            raw["sample"] = sample_design(scenario.model, raw["sample"])
+
     if not isinstance(raw.get("options", {}), dict) or raw.get("options"):
         raise ValueError("No execution options are supported by this contract version yet")
     return raw, scenario

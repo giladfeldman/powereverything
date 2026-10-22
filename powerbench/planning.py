@@ -53,7 +53,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
     if multiplicity_method not in {"none", "bonferroni", "hochberg"}:
         raise ValueError("multiplicity_method must be none, bonferroni, or hochberg.")
     from .power import count
-    primary_tests = count(payload["primary_tests"], "primary_tests", 1) if payload.get("primary_tests") else 1
+    primary_tests = count(payload["primary_tests"], "primary_tests", 1) if "primary_tests" in payload else 1
     if primary_tests < 1:
         raise ValueError("Number of primary tests must be at least 1.")
     # Hochberg step-up planning for equal-weight primaries uses the most stringent step (alpha/m),
@@ -134,7 +134,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         ]
     elif model == "one_way_anova":
         effect = {"cohens_f": _number(payload, "effect"), "parameterization": "cohens_f"}
-        design = {"groups": int(_number(payload, "groups")), "attrition_rate": _number(payload, "attrition_rate")}
+        design = {"groups": count(_number(payload, "groups"), "groups", 1), "attrition_rate": _number(payload, "attrition_rate")}
         title = "Balanced one-way ANOVA omnibus plan"
         assumptions = [
             "Groups are equally sized; the result is for the omnibus F test, not a particular pairwise contrast.",
@@ -143,7 +143,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         ]
     elif model == "linear_regression":
         effect = {"cohens_f2": _number(payload, "effect"), "parameterization": "cohens_f_squared"}
-        design = {"predictors": int(_number(payload, "predictors")), "attrition_rate": _number(payload, "attrition_rate")}
+        design = {"predictors": count(_number(payload, "predictors"), "predictors", 1), "attrition_rate": _number(payload, "attrition_rate")}
         title = "Linear regression overall-model plan"
         assumptions = [
             "The target is the overall R-squared test for the stated number of predictors, using Cohen's f-squared.",
@@ -152,7 +152,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         ]
     elif model == "incremental_regression":
         effect = {"cohens_f2": _number(payload, "effect"), "parameterization": "incremental_cohens_f_squared"}
-        design = {"total_predictors": int(_number(payload, "total_predictors")), "tested_predictors": int(_number(payload, "tested_predictors")), "attrition_rate": _number(payload, "attrition_rate")}
+        design = {"total_predictors": count(_number(payload, "total_predictors"), "total_predictors", 1), "tested_predictors": count(_number(payload, "tested_predictors"), "tested_predictors", 1), "attrition_rate": _number(payload, "attrition_rate")}
         title = "Incremental linear regression plan"
         assumptions = [
             "The target is a pre-specified block of predictors, expressed as incremental Cohen's f-squared.",
@@ -183,8 +183,8 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
     elif model == "factorial_anova":
         effect = {"cohens_f": _number(payload, "effect"), "parameterization": "cohens_f_tested_term"}
         design = {
-            "levels_a": int(_number(payload, "levels_a")),
-            "levels_b": int(_number(payload, "levels_b")),
+            "levels_a": count(_number(payload, "levels_a"), "levels_a", 1),
+            "levels_b": count(_number(payload, "levels_b"), "levels_b", 1),
             "tested_term": payload.get("tested_term", "AB"),
             "attrition_rate": _number(payload, "attrition_rate"),
         }
@@ -197,7 +197,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
     elif model == "ancova":
         effect = {"cohens_f": _number(payload, "effect"), "parameterization": "cohens_f_adjusted_treatment"}
         design = {
-            "groups": int(_number(payload, "groups")),
+            "groups": count(_number(payload, "groups"), "groups", 1),
             "covariate_r2": _number(payload, "covariate_r2"),
             "attrition_rate": _number(payload, "attrition_rate"),
         }
@@ -218,7 +218,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         ]
     elif model == "moderation":
         effect = {"cohens_f2": _number(payload, "effect"), "parameterization": "incremental_interaction_f2"}
-        design = {"total_predictors": int(_number(payload, "total_predictors")), "attrition_rate": _number(payload, "attrition_rate")}
+        design = {"total_predictors": count(_number(payload, "total_predictors"), "total_predictors", 1), "attrition_rate": _number(payload, "attrition_rate")}
         title = "Moderation interaction plan"
         assumptions = [
             "The focal test is the interaction increment after lower-order terms.",
@@ -287,7 +287,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         ]
     elif model == "meta_analysis_fixed":
         effect = {"cohens_d": _number(payload, "effect"), "parameterization": "average_smd"}
-        design = {"studies": int(_number(payload, "studies")), "attrition_rate": _number(payload, "attrition_rate")}
+        design = {"studies": count(_number(payload, "studies"), "studies", 1), "attrition_rate": _number(payload, "attrition_rate")}
         title = "Fixed-effect meta-analysis plan"
         assumptions = [
             "All studies share one common true standardized mean difference.",
@@ -297,7 +297,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
     elif model == "meta_analysis_random":
         effect = {"cohens_d": _number(payload, "effect"), "parameterization": "average_smd_with_heterogeneity"}
         design = {
-            "studies": int(_number(payload, "studies")),
+            "studies": count(_number(payload, "studies"), "studies", 1),
             "tau": _number(payload, "tau"),
             "attrition_rate": _number(payload, "attrition_rate"),
         }
@@ -324,7 +324,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         ]
     elif model == "ordinal_regression":
         effect = {"odds_ratio": _number(payload, "effect"), "parameterization": "proportional_odds_ratio"}
-        design = {"categories": int(_number(payload, "categories")), "attrition_rate": _number(payload, "attrition_rate")}
+        design = {"categories": count(_number(payload, "categories"), "categories", 1), "attrition_rate": _number(payload, "attrition_rate")}
         title = "Ordinal proportional-odds plan"
         assumptions = [
             "The outcome has ordered categories and the proportional-odds assumption holds.",
@@ -351,7 +351,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         effect = {"cohens_d": _number(payload, "effect"), "parameterization": "standardized_mean_difference"}
         design = {
             "allocation_ratio": _number(payload, "allocation_ratio"),
-            "looks": int(_number(payload, "looks")),
+            "looks": count(_number(payload, "looks"), "looks", 1),
             "equal_variance": True,
             "attrition_rate": _number(payload, "attrition_rate"),
         }

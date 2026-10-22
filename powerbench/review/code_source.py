@@ -32,7 +32,7 @@ def _r_without_comments(text):
     return '\n'.join(lines).strip()
 
 
-def literal_power_call(text):
+def literal_power_call(text: object) -> dict:
     """Return matched literal arguments, or abstain on ambiguous syntax/call units."""
     if not isinstance(text,str) or len(text)>100000:return {}
     try:

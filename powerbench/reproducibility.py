@@ -109,8 +109,14 @@ def export_bundle(result: dict) -> bytes:
         raise ValueError("Stored method provenance does not match this implementation")
     if replay.get("result") != result.get("result"):
         raise ValueError("Stored result does not match its scientific reproduction")
+    # Reconstruct every executable/reporting artifact from the validated request.
+    # Stored prose, scripts, citations and dependency strings are untrusted, even
+    # when their numeric result still matches. Do not mutate the saved record.
+    result = replay
+    result["provenance"].pop("execution", None)
+    request = result["normalized_request"]
     entries = {
-        "README.md": "# Reproduce this analysis\n\nCreate a fresh Python environment, install requirements.lock.txt, then run reproduce.py. R, when supplied, is an independent implementation under the stated assumptions. Numerical agreement does not certify the design.\n",
+        "README.md": "# Reproduce this analysis\n\nThis bundle was recomputed from the normalized request using the stated engine and method. Stored prose, scripts, citations and dependency strings were regenerated; the saved original was not modified.\n\nCreate a fresh Python environment, install requirements.lock.txt, then run reproduce.py. R, when supplied, is an independent implementation under the stated assumptions. Numerical agreement does not certify the design.\n",
         "request.json": json.dumps(request, indent=2, allow_nan=False),
         "result.json": json.dumps(result, indent=2, allow_nan=False),
         "provenance.json": json.dumps(result.get("provenance", {}), indent=2),
@@ -122,7 +128,7 @@ def export_bundle(result: dict) -> bytes:
     for item in result.get("reproduction", []):
         extension = "py" if item["language"] == "python" else "R"
         entries[f"reproduce.{extension}"] = item["code"]
-    entries["manifest.json"] = json.dumps({"schema_version": "1.0", "files": {k: hashlib.sha256(v.encode("utf-8")).hexdigest() for k, v in entries.items()}}, indent=2)
+    entries["manifest.json"] = json.dumps({"schema_version": "1.0", "bundle_policy_version": "1.1", "content_source": "recomputed_from_normalized_request", "files": {k: hashlib.sha256(v.encode("utf-8")).hexdigest() for k, v in entries.items()}}, indent=2)
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, content in sorted(entries.items()):

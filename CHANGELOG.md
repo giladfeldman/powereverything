@@ -12,6 +12,13 @@ version and only when a method's answers change. See
 
 ## 0.9.0 — release candidate, not yet published
 
+- Operation policy 1.3 validates framework/model agreement and integer wizard counts,
+  rejects boolean numerical design values and conflicting sample units, and includes
+  derived independent-arm totals in canonical requests. Valid numerical kernels are unchanged.
+- Bundle policy 1.1 recomputes code, paragraphs, citations and dependency locks from
+  the verified normalized request instead of trusting mutable saved presentation fields.
+  Bundles omit wall-clock execution metadata to preserve deterministic export bytes.
+
 - Adds versioned offline requests, fixed-N power and detectable-effect goals, default
   target power .95 when omitted, provenance, executable scripts and checksummed bundles.
 - Moves scientific planning, reporting, comparison, conversions, review, external-tool

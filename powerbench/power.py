@@ -8,7 +8,7 @@ from .capabilities import FIXED_MODELS
 from .schema import Scenario
 
 
-def count(value, name: str, minimum: int = 2) -> int:
+def count(value: float | str | None, name: str, minimum: int = 2) -> int:
     if isinstance(value, bool) or value is None:
         raise ValueError(f"{name} must be an integer >= {minimum}")
     try:
@@ -20,9 +20,27 @@ def count(value, name: str, minimum: int = 2) -> int:
     return int(number)
 
 
+def sample_design(model: str, sample: dict) -> dict[str, int]:
+    """Validate sample units and derive the total from explicit independent arms."""
+    if not isinstance(sample, dict):
+        raise TypeError("sample must be an object")
+    if model in {"two_sample_t", "welch_t"}:
+        if set(sample) - {"n1", "n2", "n_total"}:
+            raise ValueError("Unrecognized sample field")
+        n1, n2 = count(sample.get("n1"), "n1"), count(sample.get("n2"), "n2")
+        total = count(n1 + n2, "n_total")
+        if "n_total" in sample and count(sample["n_total"], "n_total") != total:
+            raise ValueError("n_total conflicts with n1 + n2")
+        return {"n1": n1, "n2": n2, "n_total": total}
+    if set(sample) != {"n_total"}:
+        raise ValueError("This model requires only n_total in its declared sample units; independent-arm counts are not supported")
+    return {"n_total": count(sample["n_total"], "n_total")}
+
+
 def fixed_power(s: Scenario, sample: dict) -> dict:
     if s.model not in FIXED_MODELS:
         raise NotImplementedError(f"Fixed-sample power is not yet validated for {s.model}")
+    sample = sample_design(s.model, sample)
     alpha, alt, e, d = s.decision_rule.alpha, s.decision_rule.alternative, s.effect, s.design
     model = s.model
     if model in {"two_sample_t", "welch_t"}:

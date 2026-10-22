@@ -1,4 +1,5 @@
 """Bounded planning work; exhaustion is distinct from mathematical unreachability."""
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from time import monotonic
@@ -10,7 +11,7 @@ class SearchBudgetExceeded(ValueError):
 _budget = ContextVar("powerbench_search_budget", default=None)
 
 @contextmanager
-def search_budget():
+def search_budget() -> Iterator[None]:
     existing = _budget.get()
     token = _budget.set(existing or {"deadline": monotonic() + 30, "iterations": 0})
     try:
@@ -18,7 +19,7 @@ def search_budget():
     finally:
         _budget.reset(token)
 
-def check_search_budget():
+def check_search_budget() -> None:
     state = _budget.get()
     if state is not None:
         state["iterations"] += 1

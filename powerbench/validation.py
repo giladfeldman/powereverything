@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import powerbench
 
@@ -12,7 +13,7 @@ from .parameterization import classify_difference
 from .reference_parameterization import reference_parameterization
 from .references import analytic_reference
 from .registry import automated_adapters
-from .schema import load_scenario
+from .schema import Scenario, load_scenario
 from .simulation import simulate
 
 CASE_STUDIES: dict[str, str] = {
@@ -24,7 +25,7 @@ CASE_STUDIES: dict[str, str] = {
     "incremental_regression": "docs/discrepancies/incremental_regression.md",
 }
 
-def jsonable(value):
+def jsonable(value: Any) -> Any:
     """Coerce numpy scalars to plain Python types.
 
     The simulator returns numpy floats and bools, which `json.dumps` refuses. Failing at
@@ -83,7 +84,7 @@ def adapters_for(skip_slow: bool) -> list:
     adapters.sort(key=lambda adapter: adapter.id)
     return adapters
 
-def simulate_for(scenario, reference: dict, path: Path | None = None) -> dict | None:
+def simulate_for(scenario: Scenario, reference: dict, path: Path | None = None) -> dict | None:
     """Re-run the in-house simulation at a fixed seed and replication count.
 
     The complete scenario is copied in memory; no website path or temporary file is required.
@@ -105,7 +106,7 @@ def build_cell(path: Path, adapters: list) -> dict:
     return evaluate_scenario(load_scenario(path), adapters)
 
 
-def evaluate_scenario(scenario, adapters: list | None = None) -> dict:
+def evaluate_scenario(scenario: Scenario, adapters: list | None = None) -> dict:
     if adapters is None:
         adapters = adapters_for(False)
     scenario.validate()
@@ -272,7 +273,7 @@ def matrices_agree(committed: list[dict], fresh: list[dict], executed: set[str])
     return comparable_cells(committed, executed) == comparable_cells(fresh, executed)
 
 
-def reproduction_code(scenario) -> dict:
+def reproduction_code(scenario: Scenario) -> dict:
     """A fresh rerun, explicitly separate from an archived tool/environment record."""
     import json
 

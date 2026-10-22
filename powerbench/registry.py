@@ -6,9 +6,10 @@ from .adapters import (
     RRpactAdapter,
     RWebPowerAdapter,
 )
+from .adapters.base import Adapter
 
 
-def automated_adapters():
+def automated_adapters() -> list[Adapter]:
     """The only location that declares executable adapters for a benchmark run.
 
     Each adapter must declare its own `parameterization()` so that a numeric difference can

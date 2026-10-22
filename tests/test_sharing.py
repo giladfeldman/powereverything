@@ -31,7 +31,7 @@ def test_sensitivity_snapshot_replays_without_an_invented_effect():
     assert "cohens_d" not in public["normalized_request"]["scenario"]["effect"]
     assert analyze(public["normalized_request"])["result"]["detectable_effect"]==result["result"]["detectable_effect"]
 
-    assert public["normalized_request"]["sample"] == {"n1":100,"n2":100}
+    assert public["normalized_request"]["sample"] == {"n1":100,"n2":100,"n_total":200}
 
 
 def test_anonymous_snapshot_retains_only_neutral_reproduction_runtime():

@@ -9,13 +9,14 @@ import numpy as np
 from scipy.optimize import brentq
 
 from .capabilities import FIXED_MODELS
-from .power import fixed_power
+from .power import fixed_power, sample_design
 from .schema import Scenario
 
 
 def detectable_effect(s: Scenario, sample: dict, domain: dict | None = None) -> dict:
     if s.model not in FIXED_MODELS:
         raise NotImplementedError(f"Fixed-N sensitivity is not yet validated for {s.model}")
+    sample = sample_design(s.model, sample)
     key = FIXED_MODELS[s.model]
     domain = dict(domain or {})
     if set(domain) - {"lower", "upper", "direction", "parameter"}:
