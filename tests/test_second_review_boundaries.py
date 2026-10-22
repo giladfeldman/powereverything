@@ -63,6 +63,9 @@ def test_rewrite_cannot_swap_count_roles_or_sidedness(mutation):
     record={'canonical_request':result['normalized_request'],'canonical_result':result['result'],
             'canonical_paragraph':result['reporting']['apa'],'chronology':'unknown','effect_rationale':None}
     text=record['canonical_paragraph'];n=result['result']['n_total'];r=result['reporting']['distinctions']['recruitment_n']
+    # Pair every mutation with acceptance of its exact unmutated source.
+    baseline=validate_assistance('rewrite','source',{'paragraph':text+' [effect rationale needed]','confirmed':record},record)
+    assert baseline['status']=='proposal_requires_confirmation'
     if mutation=='analysable':text=text.replace(f'analysable sample of {n}',f'analysable sample of {r}')
     if mutation=='recruitment':text=text.replace(f'recruitment target was {r}',f'recruitment target was {n}')
     if mutation=='sidedness':text+=' Tests were one-sided.'

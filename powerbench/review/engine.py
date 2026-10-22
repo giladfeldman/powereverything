@@ -3,10 +3,9 @@
 """Deterministic checks of explicitly confirmed scientific records."""
 from __future__ import annotations
 
-from math import isfinite
-
 from ..api import analyze
 from ..provenance import input_hash
+from .evidence import _finite_number
 
 REVIEW_POLICY_VERSION = "1.3"
 
@@ -46,6 +45,7 @@ def review(record: dict) -> dict:
     required["multiplicity_method"] = rule.get("multiplicity_method")
     model_keys = {
         "one_way_anova": ("groups",), "linear_regression": ("predictors",),
+        "poisson_regression": ("baseline_rate", "exposure"),
         "incremental_regression": ("total_predictors", "tested_predictors"), "moderation": ("total_predictors",),
         "meta_analysis_fixed": ("studies",), "meta_analysis_random": ("studies", "tau"),
         "group_sequential_t": ("looks",), "ordinal_regression": ("categories",),
@@ -81,7 +81,7 @@ def review(record: dict) -> dict:
                 "calculation":result,"suggestions":["Compare the confirmed assumptions and sample units with the source, where supplied.","Supply the effect rationale and timing before using the reporting draft."],
                 "execution":"The deterministic calculation ran; uploaded user code was not executed."}
     reported = record.get("reported_value")
-    if isinstance(reported, bool) or not isinstance(reported, (int, float)) or not isfinite(reported):
+    if not _finite_number(reported):
         raise ValueError("An explicit numeric reported value is required")
     op = result["operation"]
     field = "n_total" if op == "plan" else "power" if op == "power" else "detectable_effect"

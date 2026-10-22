@@ -147,6 +147,10 @@ class Scenario:
         from .contracts import finite_tree, numeric_parameters
         numeric_parameters(self.effect)
         finite_tree(self.design)
+        vector_effects = {"p_null", "p_alternative", "joint_probabilities", "baseline_category_probs"}
+        for key, value in self.effect.items():
+            if key != "parameterization" and key not in vector_effects and not isinstance(value, (int, float)):
+                raise ValueError(f"effect.{key} must be a numeric scalar")
         unknown_effect = set(self.effect) - EFFECT_FIELDS[self.model]
         if unknown_effect:
             raise ValueError(f"Unsupported effect fields for {self.model}: {', '.join(sorted(unknown_effect))}")
@@ -155,8 +159,12 @@ class Scenario:
             raise ValueError(f"Unsupported design fields for {self.model}: {', '.join(sorted(unknown))}")
         categorical = {"predictor_type", "tested_term", "bf_method", "distribution"}
         for key, value in self.design.items():
+            if key in categorical and not isinstance(value, str):
+                raise ValueError(f"design.{key} must be a named categorical value")
             if key not in categorical | {"equal_variance", "hartung_knapp"}:
                 numeric_parameters(value, f"design.{key}")
+                if key != "contrast_weights" and not isinstance(value, (int, float)):
+                    raise ValueError(f"design.{key} must be a numeric scalar")
         if "allocation_ratio" in self.design and self.design["allocation_ratio"] <= 0:
             raise ValueError("allocation_ratio must be positive")
         if self.model == "logistic_regression" and self.design.get("predictor_type", "binary") == "continuous" and "allocation_ratio" in self.design:
@@ -164,8 +172,8 @@ class Scenario:
         if self.model == "logrank_two_arm" and any(key in self.design for key in ("control_hazard", "accrual_years", "dropout_hazard", "followup_years")):
             if not {"control_hazard", "followup_years"} <= self.design.keys():
                 raise ValueError("A hazard-based event model requires control_hazard and followup_years")
-            if self.design["control_hazard"] <= 0 or self.design["followup_years"] <= 0:
-                raise ValueError("control_hazard and followup_years must be positive")
+            if self.design["control_hazard"] <= 0 or self.design["followup_years"] < 0 or self.design["followup_years"] + self.design.get("accrual_years", 0) <= 0:
+                raise ValueError("Positive control hazard and observation time are required; followup_years may be zero with positive accrual")
         tests = self.design.get("primary_tests", 1)
         if isinstance(tests, bool) or not isinstance(tests, (int, float)) or tests < 1 or tests > 10_000_000 or int(tests) != tests:
             raise ValueError("primary_tests must be a positive integer")
@@ -342,7 +350,7 @@ class Scenario:
             low, high = self.effect.get("lower_bound"), self.effect.get("upper_bound")
             if low is None or high is None or float(low) >= 0 or float(high) <= 0:
                 raise ValueError("tost_equivalence requires lower_bound < 0 < upper_bound in raw mean units")
-            if float(self.effect.get("true_difference", 1)) != 0:
+            if float(self.effect.get("true_difference", 0)) != 0:
                 # Planning under exact equivalence at the null difference of zero is the default;
                 # non-zero true differences are allowed for sensitivity but must be inside bounds.
                 true_diff = float(self.effect["true_difference"])

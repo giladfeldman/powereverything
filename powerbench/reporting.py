@@ -6,7 +6,46 @@ from decimal import Decimal
 
 from .schema import Scenario
 
-TEMPLATE_VERSION = "1.5"
+TEMPLATE_VERSION = "1.6"
+
+
+def defaulted_parameters(s: Scenario) -> dict:
+    """Catalogued numerical-method defaults absent from the supplied scenario.
+
+    This ledger discloses consumed design/effect defaults, not arbitrary prose
+    assumptions. Fixed sample allocation comes from explicit arm counts.
+    """
+    from .schema import DESIGN_FIELDS
+    design = {}
+    if s.goal == "required_sample_size":
+        design["attrition_rate"] = 0
+        if "allocation_ratio" in DESIGN_FIELDS[s.model]:
+            design["allocation_ratio"] = 1.0
+    specific = {
+        "logistic_regression": {"predictor_type": "binary"},
+        "poisson_regression": {"exposure": 1.0},
+        "chi_square_gof": {"min_expected_count": 5},
+        "chi_square_independence": {"min_expected_count": 5},
+        "mediation_indirect": {"residual_sd_m": 1.0, "residual_sd_y": 1.0},
+        "meta_analysis_random": {"tau": .2},
+        "bayes_factor_t": {"bf_method": "jzs"},
+        "rope_equivalence_t": {"prior_sd": 10.0, "rope_threshold": .95},
+        "correlation": {"distribution": "bivariate_normal"},
+    }
+    design.update(specific.get(s.model, {}))
+    if s.model == "logistic_regression" and s.design.get("predictor_type", "binary") == "continuous":
+        design.pop("allocation_ratio", None)
+    if s.model == "bayes_factor_t" and str(s.design.get("bf_method", "jzs")).lower() == "jzs":
+        design["r_scale"] = .7071
+    if s.model == "logrank_two_arm" and "control_hazard" in s.design and "followup_years" in s.design:
+        design.update(accrual_years=0., dropout_hazard=0.)
+    defaults = {"design." + key: value for key, value in design.items() if key not in s.design}
+    if s.model in {"tost_equivalence", "noninferiority_t", "rope_equivalence_t"} and "true_difference" not in s.effect:
+        defaults["effect.true_difference"] = 0.
+    if s.model == "ordinal_regression" and "baseline_category_probs" not in s.effect:
+        from .specialist_extras import equally_spaced_latent_category_probs
+        defaults["effect.baseline_category_probs"] = equally_spaced_latent_category_probs(int(s.design["categories"]))
+    return defaults
 
 
 def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | None = None, family_alpha: float | None = None) -> dict:
@@ -48,6 +87,11 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
         body += f"The recruitment target was {recruitment}, allowing for the stated attrition; the analysable sample was {n}. "
     if s.goal != "required_sample_size" and s.design.get("attrition_rate", 0):
         body += "The fixed counts are analysable; attrition metadata was not applied as an inflation or reduction. "
+    defaults = defaulted_parameters(s)
+    if defaults:
+        body += "Defaulted assumptions: " + "; ".join(f"{key} = {json.dumps(value, ensure_ascii=False)}" for key, value in sorted(defaults.items())) + ". "
+    if s.model == "poisson_regression":
+        body += "This approximation assumes a balanced binary predictor with equal exposure in both arms. "
     if s.design:
         body += "Design parameters: " + "; ".join(f"{key.replace('_', ' ')} = {json.dumps(value, ensure_ascii=False)}" for key, value in sorted(s.design.items())) + ". "
     if s.model == "logrank_two_arm" and result.get("p_event_source")=="derived_from_accrual_followup_dropout":
@@ -69,7 +113,7 @@ def reporting(s: Scenario, result: dict, effect_text: str, recruitment: int | No
     body += f" Calculations used PowerBench {__version__}, method {s.model} version {method_version(s.model)}."
     if recruitment is not None:
         body += "Recruitment inflation uses expected retention and ceilings within each declared arm/cell; it does not guarantee realized retention. "
-    return {"template_version": TEMPLATE_VERSION, "apa": body, "amj": body, "ready_to_insert": False,
+    return {"defaults_applied": defaults, "template_version": TEMPLATE_VERSION, "apa": body, "amj": body, "ready_to_insert": False,
             "author_tasks": ["Confirm when this analysis was conducted before describing it as a priori.", "Supply and cite the effect rationale or smallest effect of interest.", "Confirm the planned analysis, units, multiplicity and missing-data assumptions."],
             "distinctions": {"target_effect": (f"{result['effect_parameter']} = {result['detectable_effect']:.9g} (solved detectable effect)" if s.goal == "sensitivity" else effect_text + " (planning assumption, not an observed effect)"), "family_alpha": family_alpha if family_alpha is not None else alpha,
                              "test_alpha": alpha, "analysable_n": n, "recruitment_n": recruitment if recruitment is not None else n, "framework": s.framework}}

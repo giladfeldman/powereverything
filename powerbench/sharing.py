@@ -24,6 +24,8 @@ def _numeric(value):
 
 
 def anonymous_snapshot(result: dict) -> dict:
+    if not isinstance(result, dict):
+        raise ValueError("A scientific result object is required")
     request = deepcopy(result.get("normalized_request"))
     if not isinstance(request, dict):
         raise ValueError("An immutable portable analysis result is required")
@@ -31,6 +33,10 @@ def anonymous_snapshot(result: dict) -> dict:
     if not isinstance(provenance, dict) or provenance.get("input_sha256") != input_hash(request):
         raise ValueError("Stored scientific input hash does not match the original request")
     source = request.get("scenario", {})
+    if not isinstance(source, dict) or request.get("operation") not in {"plan", "power", "detectable_effect"}:
+        raise ValueError("A portable scientific scenario and operation are required")
+    if any(not isinstance(source.get(key, {}), dict) for key in ("effect", "design", "decision_rule")):
+        raise ValueError("Scientific effect, design and decision rule must be objects")
     if provenance.get("method_id") != source.get("model"):
         raise ValueError("Stored method identity does not match the scientific request")
     scenario = {"id": "anonymous-analysis", "title": "Study analysis", "model": source.get("model"), "framework": source.get("framework"), "goal": source.get("goal"), "target_power": source.get("target_power"),
