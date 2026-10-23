@@ -25,7 +25,7 @@ def test_wizard_defaults_are_disclosed_in_ledger_and_paragraph():
 def test_supplied_values_are_not_reported_as_defaults():
     payload = {**LOGRANK, "control_hazard": 1, "followup_years": 1, "accrual_years": 0, "dropout_hazard": 0}
     defaults = analyze(request_from_fields(payload))["reporting"]["defaults_applied"]
-    assert not any(key.startswith("design.control_hazard") or key.startswith("design.followup_years") for key in defaults)
+    assert not any(key.startswith(("design.control_hazard", "design.followup_years")) for key in defaults)
 
 
 def test_logrank_hazard_ratio_sensitivity_rederives_event_probability():
@@ -44,7 +44,7 @@ def test_anonymous_snapshot_keeps_mediation_direct_path():
 
 def test_anonymous_snapshot_refuses_to_drop_a_scientific_field(monkeypatch):
     """Any schema field missing from the share allowlist must stop the share."""
-    import powerbench.sharing as sharing
+    from powerbench import sharing
     payload = {"model": "mediation_indirect", "a_path": 0.3, "b_path": 0.3, "direct_cprime": 0.2, "alpha": 0.05, "target_power": 0.95}
     result = analyze(request_from_fields(payload))
     monkeypatch.setattr(sharing, "_EFFECT", sharing._EFFECT - {"direct_cprime"})
@@ -53,7 +53,7 @@ def test_anonymous_snapshot_refuses_to_drop_a_scientific_field(monkeypatch):
 
 
 def test_share_allowlist_covers_every_schema_field():
-    import powerbench.sharing as sharing
+    from powerbench import sharing
     from powerbench.schema import COMMON_DESIGN_FIELDS, DESIGN_FIELDS, EFFECT_FIELDS
     categorical = {"predictor_type", "tested_term", "bf_method", "distribution"}
     assert set().union(*EFFECT_FIELDS.values()) - {"parameterization"} <= sharing._EFFECT
