@@ -53,7 +53,7 @@ TEMPLATES: dict[str, dict[str, Any]] = {
         "boundary": "An observed-variable linear mediation exemplar, not evidence of causal mediation. Temporal ordering, confounding of all paths, measurement error, nonlinearity, and indirect-effect confidence intervals require a dedicated design and analysis plan.",
     },
     "mixed_model_two_arm_longitudinal": {
-        "label": "Two-arm longitudinal mixed model (random intercept)",
+        "label": "Two-arm longitudinal random-intercept data, Welch surrogate analysis (no mixed model fitted)",
         "diagram": "arm -> person (random intercept) -> 3 occasions; treatment on post-baseline; analysis: Welch on person-mean of follow-ups",
         "analysis_model": "Welch t-test of person-level means of post-baseline occasions (LMM surrogate; full REML LMM is not fitted)",
         "defaults": {"participants_per_arm": 40, "occasions": 3, "icc": 0.40, "effect": 0.35, "outcome_sd": 1.0, "replications": 1000, "seed": 20260727},
@@ -67,7 +67,7 @@ TEMPLATES: dict[str, dict[str, Any]] = {
         "boundary": "A MAR dropout exemplar for teaching, not a multiple-imputation or MMRM calculator. Unequal cluster sizes and complete-case cluster means only.",
     },
     "mixed_model_random_slopes": {
-        "label": "Two-arm longitudinal mixed model (random slopes)",
+        "label": "Two-arm longitudinal random-slopes data, Welch surrogate analysis (no mixed model fitted)",
         "diagram": "arm -> person (random intercept + random slope on time) -> occasions; treatment × time interaction; analysis: Welch on person-level OLS slopes",
         "analysis_model": "Welch t-test of person-level OLS slopes on time (LMM surrogate; full REML random-slopes LMM is not fitted)",
         "defaults": {

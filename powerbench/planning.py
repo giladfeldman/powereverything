@@ -44,6 +44,17 @@ WIZARD_FIELDS = {
     'rope_equivalence_t': ['allocation_ratio', 'attrition_rate', 'lower_bound', 'prior_sd', 'rope_threshold', 'sd', 'true_difference', 'upper_bound'],
 }
 
+# Values the wizard parser substitutes when a caller leaves the field blank. Every
+# substitution is disclosed (assumption text and the reporting defaults ledger),
+# because several of them change the headline sample size.
+WIZARD_DEFAULTS = {
+    "allocation_ratio": 1.0, "exposure": 1.0, "true_difference": 0.0, "direct_cprime": 0.0,
+    "residual_sd_m": 1.0, "residual_sd_y": 1.0, "r_scale": 0.7071, "accrual_years": 0.0,
+    "followup_years": 1.0, "dropout_hazard": 0.0, "control_hazard": 1.0, "prior_sd": 10.0,
+    "rope_threshold": 0.95,
+}
+WIZARD_DEFAULT_PREFIX = "Planning default applied (field not supplied): "
+
 COMMON_WIZARD_FIELDS = {"model", "goal", "target_power", "alpha", "alternative", "attrition_rate", "multiplicity_method", "primary_tests", "n1", "n2", "n_total"}
 
 
@@ -105,8 +116,8 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         payload["equal_variance"]=value=="true"
     payload = {"target_power": DEFAULT_TARGET_POWER, "attrition_rate": 0, **payload}
     target_power = _number(payload, "target_power")
-    rate = payload.get("attrition_rate", 0)
-    if isinstance(rate, bool) or not 0 <= float(rate) < 1:
+    rate = _number(payload, "attrition_rate")
+    if not 0 <= rate < 1:
         raise ValueError("attrition_rate must lie in [0, 1)")
     family_alpha = _number(payload, "alpha")
     multiplicity_method = str(payload.get("multiplicity_method", "none")).lower()
@@ -518,6 +529,13 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         if "allocation_ratio" in payload:pair["allocation_ratio"]=_number(payload,"allocation_ratio")
         design.update(pair)
         design["allocation_ratio"]=float(declared_allocation_ratio(design))
+    import json as _json
+    for key, default in WIZARD_DEFAULTS.items():
+        if payload.get(key) not in (None, ""):
+            continue
+        for section, values in (("effect", effect), ("design", design)):
+            if key in values and values[key] == default:
+                assumptions.append(f"{WIZARD_DEFAULT_PREFIX}{section}.{key} = {_json.dumps(default)}")
     scenario = Scenario(
         id="studio-preview",
         title=title,
@@ -573,7 +591,7 @@ def make_plan(payload: dict[str, Any]) -> dict[str, Any]:
         "primary_tests": primary_tests,
         "sensitivity": _sensitivity_curve(scenario, reference),
         "heterogeneity_sensitivity": _heterogeneity_curve(scenario),
-        "sensitivity_policy_version": "1.0", "planning_policy_version": "1.2",
+        "sensitivity_policy_version": "1.1", "planning_policy_version": "1.3",
         "caution": "This is a matched calculation under the displayed assumptions. It is not a declaration that the overall study plan is correct.",
     }
     from .provenance import provenance
@@ -696,6 +714,14 @@ def _sensitivity_curve(scenario: Scenario, reference: dict[str, Any]) -> list[di
             if key in {"odds_ratio", "rate_ratio", "hazard_ratio"}:
                 from math import exp, log
                 effect[key] = exp(log(effect[key]) * multiplier)
+                design = scenario.design
+                if key == "hazard_ratio" and design.get("control_hazard") is not None and design.get("followup_years") is not None:
+                    # The event probability depends on the hazard ratio; holding the
+                    # baseline hazard and follow-up fixed, re-derive it for each row.
+                    effect["p_event"] = derive_logrank_event_probability(
+                        effect[key], float(design["control_hazard"]), float(design.get("accrual_years") or 0.0),
+                        float(design["followup_years"]), float(design.get("dropout_hazard", 0.0)),
+                        float(design.get("allocation_ratio", 1.0)))
             else:
                 effect[key] = effect[key] * multiplier
             displayed = effect[key]
@@ -778,6 +804,22 @@ def _build_reporting(
     return reporting(scenario, reference, _format_target_effect(scenario), recruitment, family_alpha)
 
 
+def _tool_comparison_text(tool: dict[str, Any], reference: dict[str, Any]) -> str:
+    """State what the external tool returned against the reference; never just its run status."""
+    status = tool.get("status", "not run")
+    if status != "ok":
+        reason = f" ({tool['reason']})" if tool.get("reason") else ""
+        return f"not compared: tool status {status}{reason}"
+    label = f"{tool.get('package', tool.get('adapter', 'external tool'))} {tool.get('package_version', '')}".strip()
+    other = (tool.get("result") or {}).get("n_total")
+    if isinstance(other, bool) or not isinstance(other, (int, float)):
+        return f"not compared: {label} returned no total sample size"
+    if int(other) == other == reference["n_total"]:
+        return f"{label} total N {int(other)} matches the reference total N {reference['n_total']}"
+    return (f"{label} total N {other:g} differs from the reference total N {reference['n_total']}; "
+            "check that both use the same parameterization before relying on either")
+
+
 def _plan_report(
     scenario: Scenario,
     reference: dict[str, Any],
@@ -813,7 +855,7 @@ def _plan_report(
         ),
         f"**Reference method:** {reference['method'].replace('_', ' ')}",
         f"**Independent simulation:** {simulation['power']:.1%} (Monte Carlo 95% interval {simulation['mc_ci95'][0]:.1%}-{simulation['mc_ci95'][1]:.1%}; {simulation['replications_completed']} replications)",
-        f"**Tool comparison:** {tool.get('status', 'not run')}",
+        f"**Tool comparison:** {_tool_comparison_text(tool, reference)}",
     ]
     if recruitment:
         lines.append(

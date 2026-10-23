@@ -13,8 +13,8 @@ from .reproducibility import reproduction
 
 SNAPSHOT_NUMERIC_FIELDS = frozenset({"n1", "n2", "n_total", "n_per_group", "n_per_cell", "power", "target_power", "detectable_effect", "cohens_w", "n_events"})
 
-_EFFECT = {"margin", "baseline_category_probs", "p_baseline", "p_event", "cohens_d", "cohens_dz", "rho", "cohens_f", "cohens_f2", "mean_difference", "sd_group1", "sd_group2", "p_null", "p_alternative", "p_group1", "p_group2", "joint_probabilities", "odds_ratio", "rate_ratio", "hazard_ratio", "true_difference", "sd", "lower_bound", "upper_bound", "a_path", "b_path"}
-_DESIGN = {"allocation_numerator", "allocation_denominator","family_alpha", "primary_tests", "allocation_ratio", "equal_variance", "attrition_rate", "groups", "predictors", "total_predictors", "tested_predictors", "categories", "rows", "cols", "min_expected_count", "levels_a", "levels_b", "covariate_r2", "contrast_weights", "studies", "tau", "hartung_knapp", "looks", "bf_threshold", "r_scale", "prior_sd", "rope_threshold", "p_event", "control_hazard", "accrual_years", "followup_years", "dropout_hazard", "baseline_rate", "exposure", "baseline_probability", "predictor_r2", "x_variance", "x_probability", "x_mean", "x_sd", "residual_sd", "residual_sd_y", "residual_sd_m"}
+_EFFECT = {"cohens_w", "direct_cprime", "margin", "baseline_category_probs", "p_baseline", "p_event", "cohens_d", "cohens_dz", "rho", "cohens_f", "cohens_f2", "mean_difference", "sd_group1", "sd_group2", "p_null", "p_alternative", "p_group1", "p_group2", "joint_probabilities", "odds_ratio", "rate_ratio", "hazard_ratio", "true_difference", "sd", "lower_bound", "upper_bound", "a_path", "b_path"}
+_DESIGN = {"n_per_group_per_study", "allocation_numerator", "allocation_denominator","family_alpha", "primary_tests", "allocation_ratio", "equal_variance", "attrition_rate", "groups", "predictors", "total_predictors", "tested_predictors", "categories", "rows", "cols", "min_expected_count", "levels_a", "levels_b", "covariate_r2", "contrast_weights", "studies", "tau", "hartung_knapp", "looks", "bf_threshold", "r_scale", "prior_sd", "rope_threshold", "p_event", "control_hazard", "accrual_years", "followup_years", "dropout_hazard", "baseline_rate", "exposure", "baseline_probability", "predictor_r2", "x_variance", "x_probability", "x_mean", "x_sd", "residual_sd", "residual_sd_y", "residual_sd_m"}
 
 
 def _numeric(value):
@@ -48,12 +48,23 @@ def anonymous_snapshot(result: dict) -> dict:
                 "design": {k: _numeric(v) for k, v in source.get("design", {}).items() if k in _DESIGN},
                 "decision_rule": source.get("decision_rule", {}), "assumptions": [], "simulation": {}, "status": "draft"}
     # A small set of categorical scientific values is enumerated explicitly.
-    for key, choices in {"predictor_type": {"binary", "continuous"}, "tested_term": {"A", "B", "AB"}, "bf_method": {"jzs", "bic"}, "predictor_distribution": {"binary", "normal"}}.items():
+    categorical = {"predictor_type": {"binary", "continuous"}, "tested_term": {"A", "B", "AB"}, "bf_method": {"jzs", "bic"}, "predictor_distribution": {"binary", "normal"}, "distribution": {"bivariate_normal"}}
+    for key, choices in categorical.items():
         value = source.get("design", {}).get(key)
         if key == "bf_method" and isinstance(value, str):
             value = value.lower()
         if value in choices:
             scenario["design"][key] = value
+    # Non-scientific keys are stripped as identity metadata. A field the method's schema
+    # defines must never be stripped: that would silently change the shared request.
+    from .schema import COMMON_DESIGN_FIELDS, DESIGN_FIELDS, EFFECT_FIELDS
+    model = source.get("model")
+    effect_fields = EFFECT_FIELDS.get(model, frozenset()) - {"parameterization"}
+    design_fields = DESIGN_FIELDS.get(model, frozenset()) | COMMON_DESIGN_FIELDS
+    dropped = sorted({f"effect.{k}" for k in source.get("effect", {}) if k in effect_fields and k not in scenario["effect"]}
+                     | {f"design.{k}" for k in source.get("design", {}) if k in design_fields and k not in scenario["design"]})
+    if dropped:
+        raise ValueError("This analysis has scientific fields the anonymous snapshot cannot carry: " + ", ".join(dropped))
     sanitized = {"schema_version": "1.0", "operation": request["operation"], "scenario": scenario}
     if request.get("sample"):
         sanitized["sample"] = {k: _numeric(v) for k, v in request["sample"].items() if k in {"n1", "n2", "n_total"}}
@@ -104,7 +115,7 @@ def anonymous_snapshot(result: dict) -> dict:
     python_version = verified_provenance.get("runtime", {}).get("python")
     if isinstance(python_version, str) and re.fullmatch(version_pattern, python_version):
         shared_provenance["runtime"] = {"python": python_version}
-    return {"schema_version": "1.0", "anonymization_version": "1.2", "status": "complete", "operation": normalized["operation"], "normalized_request": normalized, "result": values,
+    return {"schema_version": "1.0", "anonymization_version": "1.3", "status": "complete", "operation": normalized["operation"], "normalized_request": normalized, "result": values,
             "warnings": ["Identity metadata and source documents are excluded. Scientific details may still reveal identity; review this exact snapshot before sharing."],
             "provenance": shared_provenance, "reproduction": scripts, "reporting": replay.get("reporting", {}), "citations": replay.get("citations", [])}
 

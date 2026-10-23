@@ -1,0 +1,82 @@
+"""Regression controls for defects found by the 2026-10-23 takeover review (Sonnet seat).
+
+Each test was observed failing on commit 2980d01 before its repair.
+"""
+from __future__ import annotations
+
+import pytest
+
+from powerbench.api import analyze
+from powerbench.planning import _plan_report, make_plan, request_from_fields
+from powerbench.sharing import anonymous_snapshot
+
+LOGRANK = {"model": "logrank_two_arm", "effect": 0.7, "alpha": 0.05, "target_power": 0.95, "allocation_ratio": 1}
+
+
+def test_wizard_defaults_are_disclosed_in_ledger_and_paragraph():
+    """Blank survival fields are filled by the parser; the result must say so."""
+    result = analyze(request_from_fields(LOGRANK))
+    defaults = result["reporting"]["defaults_applied"]
+    assert defaults["design.control_hazard"] == 1.0
+    assert defaults["design.followup_years"] == 1.0
+    assert "control_hazard = 1.0" in result["reporting"]["apa"]
+
+
+def test_supplied_values_are_not_reported_as_defaults():
+    payload = {**LOGRANK, "control_hazard": 1, "followup_years": 1, "accrual_years": 0, "dropout_hazard": 0}
+    defaults = analyze(request_from_fields(payload))["reporting"]["defaults_applied"]
+    assert not any(key.startswith("design.control_hazard") or key.startswith("design.followup_years") for key in defaults)
+
+
+def test_logrank_hazard_ratio_sensitivity_rederives_event_probability():
+    rows = make_plan(LOGRANK)["sensitivity"]
+    assert [row["status"] for row in rows] == ["complete"] * 5
+    totals = [row["n_total"] for row in rows]
+    # Multipliers scale log(HR); larger multipliers are larger effects and need fewer participants.
+    assert totals == sorted(totals, reverse=True)
+
+
+def test_anonymous_snapshot_keeps_mediation_direct_path():
+    payload = {"model": "mediation_indirect", "a_path": 0.3, "b_path": 0.3, "direct_cprime": 0.2, "alpha": 0.05, "target_power": 0.95}
+    shared = anonymous_snapshot(analyze(request_from_fields(payload)))
+    assert shared["normalized_request"]["scenario"]["effect"]["direct_cprime"] == 0.2
+
+
+def test_anonymous_snapshot_refuses_to_drop_a_scientific_field(monkeypatch):
+    """Any schema field missing from the share allowlist must stop the share."""
+    import powerbench.sharing as sharing
+    payload = {"model": "mediation_indirect", "a_path": 0.3, "b_path": 0.3, "direct_cprime": 0.2, "alpha": 0.05, "target_power": 0.95}
+    result = analyze(request_from_fields(payload))
+    monkeypatch.setattr(sharing, "_EFFECT", sharing._EFFECT - {"direct_cprime"})
+    with pytest.raises(ValueError, match="effect.direct_cprime"):
+        sharing.anonymous_snapshot(result)
+
+
+def test_share_allowlist_covers_every_schema_field():
+    import powerbench.sharing as sharing
+    from powerbench.schema import COMMON_DESIGN_FIELDS, DESIGN_FIELDS, EFFECT_FIELDS
+    categorical = {"predictor_type", "tested_term", "bf_method", "distribution"}
+    assert set().union(*EFFECT_FIELDS.values()) - {"parameterization"} <= sharing._EFFECT
+    assert set(COMMON_DESIGN_FIELDS).union(*DESIGN_FIELDS.values()) - categorical <= sharing._DESIGN
+
+
+@pytest.mark.parametrize("bad", [None, [1], {"x": 1}])
+def test_non_numeric_attrition_is_a_value_error(bad):
+    with pytest.raises(ValueError):
+        request_from_fields({"model": "two_sample_t", "effect": 0.4, "alpha": 0.05, "target_power": 0.95, "allocation_ratio": 1, "attrition_rate": bad})
+
+
+def _report_line(tool):
+    plan = make_plan({"model": "two_sample_t", "effect": 0.4, "alpha": 0.05, "target_power": 0.95, "allocation_ratio": 1})
+    from powerbench.planning import scenario_from_fields
+    scenario, *_ = scenario_from_fields({"model": "two_sample_t", "effect": 0.4, "alpha": 0.05, "target_power": 0.95, "allocation_ratio": 1})
+    report = _plan_report(scenario, plan["reference"], plan["simulation"], tool, None, plan["reporting"])
+    return next(line for line in report.splitlines() if line.startswith("**Tool comparison:**"))
+
+
+def test_plan_report_tool_line_compares_sample_sizes():
+    assert "differs" in _report_line({"status": "ok", "adapter": "r.pwr", "result": {"n_total": 330}})
+    assert "330" in _report_line({"status": "ok", "adapter": "r.pwr", "result": {"n_total": 330}})
+    assert "matches" in _report_line({"status": "ok", "adapter": "r.pwr", "result": {"n_total": 328}})
+    assert "not compared" in _report_line({"status": "unsupported", "reason": "x"})
+    assert "ok" != _report_line({"status": "ok", "adapter": "r.pwr", "result": {}}).split(":** ")[1]

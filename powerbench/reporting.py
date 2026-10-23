@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from .schema import Scenario
 
-TEMPLATE_VERSION = "1.6"
+TEMPLATE_VERSION = "1.7"
 
 
 def defaulted_parameters(s: Scenario) -> dict:
@@ -45,6 +45,13 @@ def defaulted_parameters(s: Scenario) -> dict:
     if s.model == "ordinal_regression" and "baseline_category_probs" not in s.effect:
         from .specialist_extras import equally_spaced_latent_category_probs
         defaults["effect.baseline_category_probs"] = equally_spaced_latent_category_probs(int(s.design["categories"]))
+    # Wizard-parsed requests carry their substitutions as explicit values, so the
+    # catalogue above cannot see them; the parser records each one as an assumption.
+    from .planning import WIZARD_DEFAULT_PREFIX
+    for item in s.assumptions:
+        if isinstance(item, str) and item.startswith(WIZARD_DEFAULT_PREFIX):
+            key, _, value = item[len(WIZARD_DEFAULT_PREFIX):].partition(" = ")
+            defaults[key] = json.loads(value)
     return defaults
 
 
