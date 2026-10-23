@@ -47,11 +47,8 @@ def defaulted_parameters(s: Scenario) -> dict:
         defaults["effect.baseline_category_probs"] = equally_spaced_latent_category_probs(int(s.design["categories"]))
     # Wizard-parsed requests carry their substitutions as explicit values, so the
     # catalogue above cannot see them; the parser records each one as an assumption.
-    from .planning import WIZARD_DEFAULT_PREFIX
-    for item in s.assumptions:
-        if isinstance(item, str) and item.startswith(WIZARD_DEFAULT_PREFIX):
-            key, _, value = item[len(WIZARD_DEFAULT_PREFIX):].partition(" = ")
-            defaults[key] = json.loads(value)
+    from .planning import checked_default_disclosures
+    defaults.update(checked_default_disclosures(s.assumptions, s.effect, s.design, s.target_power))
     return defaults
 
 

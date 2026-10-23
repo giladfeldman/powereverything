@@ -47,6 +47,11 @@ def anonymous_snapshot(result: dict) -> dict:
                 "effect": {k: _numeric(v) for k, v in source.get("effect", {}).items() if k in _EFFECT},
                 "design": {k: _numeric(v) for k, v in source.get("design", {}).items() if k in _DESIGN},
                 "decision_rule": source.get("decision_rule", {}), "assumptions": [], "simulation": {}, "status": "draft"}
+    # Default disclosures are structured (field = number), checked against the shared values
+    # and re-emitted canonically, so they carry no free text.
+    from .planning import checked_default_disclosures, default_disclosure_lines
+    scenario["assumptions"] = default_disclosure_lines(checked_default_disclosures(
+        source.get("assumptions"), scenario["effect"], scenario["design"], scenario["target_power"]))
     # A small set of categorical scientific values is enumerated explicitly.
     categorical = {"predictor_type": {"binary", "continuous"}, "tested_term": {"A", "B", "AB"}, "bf_method": {"jzs", "bic"}, "predictor_distribution": {"binary", "normal"}, "distribution": {"bivariate_normal"}}
     for key, choices in categorical.items():

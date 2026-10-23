@@ -55,6 +55,38 @@ WIZARD_DEFAULTS = {
 }
 WIZARD_DEFAULT_PREFIX = "Planning default applied (field not supplied): "
 
+
+def checked_default_disclosures(assumptions: Any, effect: dict, design: dict, target_power: Any) -> dict[str, Any]:
+    """Parse the parser's default-disclosure lines; each must match the value it describes.
+
+    Returns ``{"design.key": value, ...}``. A line naming a field that is absent or holds a
+    different value raises ValueError, so a disclosure cannot be forged or go stale.
+    """
+    import json as _json
+    found: dict[str, Any] = {}
+    for item in assumptions or []:
+        if not (isinstance(item, str) and item.startswith(WIZARD_DEFAULT_PREFIX)):
+            continue
+        key, _, raw = item[len(WIZARD_DEFAULT_PREFIX):].partition(" = ")
+        value = _json.loads(raw)
+        section, _, field = key.partition(".")
+        if key == "target_power":
+            actual, present = target_power, target_power is not None
+        elif section in {"effect", "design"} and field:
+            values = effect if section == "effect" else design
+            actual, present = values.get(field), field in values
+        else:
+            raise ValueError(f"Default disclosure names an unknown field: {key}")
+        if not present or isinstance(value, bool) or not isinstance(value, (int, float)) or actual != value:
+            raise ValueError(f"Default disclosure for {key} does not match the scenario value")
+        found[key] = value
+    return found
+
+
+def default_disclosure_lines(defaults: dict[str, Any]) -> list[str]:
+    import json as _json
+    return [f"{WIZARD_DEFAULT_PREFIX}{key} = {_json.dumps(value)}" for key, value in defaults.items()]
+
 COMMON_WIZARD_FIELDS = {"model", "goal", "target_power", "alpha", "alternative", "attrition_rate", "multiplicity_method", "primary_tests", "n1", "n2", "n_total"}
 
 
@@ -114,7 +146,8 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         value=payload["equal_variance"].lower()
         if value not in {"true","false"}:raise ValueError("equal_variance must be boolean")
         payload["equal_variance"]=value=="true"
-    payload = {"target_power": DEFAULT_TARGET_POWER, "attrition_rate": 0, **payload}
+    blank = {key for key in ("target_power", "attrition_rate") if key not in payload}
+    payload = {**payload, **{key: value for key, value in (("target_power", DEFAULT_TARGET_POWER), ("attrition_rate", 0)) if key in blank}}
     target_power = _number(payload, "target_power")
     rate = _number(payload, "attrition_rate")
     if not 0 <= rate < 1:
@@ -536,6 +569,10 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         for section, values in (("effect", effect), ("design", design)):
             if key in values and values[key] == default:
                 assumptions.append(f"{WIZARD_DEFAULT_PREFIX}{section}.{key} = {_json.dumps(default)}")
+    if "target_power" in blank:
+        assumptions.append(f"{WIZARD_DEFAULT_PREFIX}target_power = {_json.dumps(DEFAULT_TARGET_POWER)}")
+    if "attrition_rate" in blank and design.get("attrition_rate") == 0:
+        assumptions.append(f"{WIZARD_DEFAULT_PREFIX}design.attrition_rate = 0")
     scenario = Scenario(
         id="studio-preview",
         title=title,

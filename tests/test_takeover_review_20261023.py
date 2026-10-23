@@ -98,3 +98,31 @@ def test_assumption_sensitivity_refuses_fixed_sample_goals():
     from powerbench.planning import assumption_sensitivity
     with pytest.raises(ValueError):
         assumption_sensitivity({"model": "two_sample_t", "effect": 0.4, "alpha": 0.05, "goal": "achieved_power", "n1": 50, "n2": 50})
+
+
+# Sonnet fix-delta review, 2026-10-23: defaults disclosure must survive sharing and cover
+# every substituted planning value, and a disclosure line must match the scenario it describes.
+
+def test_anonymous_snapshot_keeps_default_disclosures():
+    shared = anonymous_snapshot(analyze(request_from_fields(LOGRANK)))
+    defaults = shared["reporting"]["defaults_applied"]
+    assert defaults["design.control_hazard"] == 1.0
+    assert "control_hazard = 1.0" in shared["reporting"]["apa"]
+    assert all(line.startswith("Planning default applied") for line in shared["normalized_request"]["scenario"]["assumptions"])
+
+
+def test_target_power_and_attrition_defaults_are_disclosed():
+    fields = {"model": "two_sample_t", "effect": 0.4, "alpha": 0.05, "allocation_ratio": 1}
+    defaults = analyze(request_from_fields(fields))["reporting"]["defaults_applied"]
+    assert defaults["target_power"] == 0.95
+    assert defaults["design.attrition_rate"] == 0
+    supplied = analyze(request_from_fields({**fields, "target_power": 0.95, "attrition_rate": 0}))["reporting"]["defaults_applied"]
+    assert "target_power" not in supplied and "design.attrition_rate" not in supplied
+
+
+def test_forged_default_disclosure_is_rejected():
+    from powerbench.planning import WIZARD_DEFAULT_PREFIX
+    request = request_from_fields({"model": "two_sample_t", "effect": 0.4, "alpha": 0.05, "target_power": 0.95, "allocation_ratio": 1})
+    request["scenario"]["assumptions"].append(WIZARD_DEFAULT_PREFIX + "effect.cohens_d = 0.2")
+    with pytest.raises(ValueError, match="does not match"):
+        analyze(request)
