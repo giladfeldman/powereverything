@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import zipfile
+from collections.abc import Callable
 
 from .allocation import declared_allocation_ratio
 from .capabilities import R_MODELS
@@ -156,7 +157,7 @@ def export_bundle(result: dict) -> bytes:
     return _serialize_bundle(replay,legacy=legacy)
 
 
-def export_request_bundle(request: dict, progress=None) -> bytes:
+def export_request_bundle(request: dict, progress: Callable[[int, str], None] | None = None) -> bytes:
     """Calculate once and export a request; no stored-result certification is implied."""
     if not isinstance(request,dict):
         raise ValueError("A scientific request object is required")  # noqa: TRY004 -- JSON validation contract

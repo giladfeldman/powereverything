@@ -133,6 +133,10 @@ def bic_bf10_from_t(tstat: float, n_total: int) -> float:
     return float(exp(0.5 * (tstat**2 - log(n_total))))
 
 
+class BayesFactorOverflowError(ValueError):
+    """BF10 is larger than exp(709): decisive for H1, but not representable as a float."""
+
+
 def jzs_bf10_from_t(tstat: float, n1: int, n2: int, r_scale: float = 0.7071) -> float:
     """Full Cauchy-prior marginal via its normal/inverse-chi-square mixture.
 
@@ -158,7 +162,7 @@ def jzs_bf10_from_t(tstat: float, n1: int, n2: int, r_scale: float = 0.7071) -> 
     if integral<=0 or not isfinite(integral) or error>max(1e-10,1e-6*integral):
         raise ValueError("JZS quadrature did not converge to the declared numerical tolerance")
     log_bf=log(integral)+offset
-    if log_bf>709:raise ValueError("JZS Bayes factor exceeds the supported finite numeric range")
+    if log_bf>709:raise BayesFactorOverflowError("JZS Bayes factor exceeds the supported finite numeric range")
     return exp(log_bf)
 
 
@@ -661,11 +665,9 @@ def required_n_logrank_two_arm(s: Scenario) -> dict[str, Any]:
     ratio = float(s.design.get("allocation_ratio", 1.0))
 
     # Prefer deriving the event probability from the accrual/follow-up/dropout plan the
-    # scenario already declares (and that `Scenario.validate` already checks). Falling
-    # back to a hand-supplied `p_event` keeps older scenarios working, but a design that
-    # states its follow-up should not also have to state the implied event probability --
-    # `expected_event_probability_exponential` existed for exactly this and had no
-    # call sites.
+    # scenario already declares (and that `Scenario.validate` already checks). The schema
+    # still requires `p_event`; when hazards and follow-up are also given, the supplied
+    # value must agree with the derived one (checked below) or the request is rejected.
     control_hazard = s.design.get("control_hazard")
     accrual_years = s.design.get("accrual_years")
     followup_years = s.design.get("followup_years")

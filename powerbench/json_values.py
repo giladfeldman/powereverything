@@ -1,10 +1,11 @@
 """Convert generated scientific values to finite ordinary JSON-compatible values."""
 from math import isfinite
+from typing import Any
 
 import numpy as np
 
 
-def json_values(value):
+def json_values(value: Any) -> Any:
     if isinstance(value,np.ma.MaskedArray) and np.any(np.ma.getmaskarray(value)):
         raise ValueError("Masked scientific values require explicit missing-data handling")
     if isinstance(value,np.generic):

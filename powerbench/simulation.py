@@ -613,13 +613,19 @@ def simulate(s: Scenario, n1: int | None = None, n2: int | None = None, n_total:
         r_scale = float(s.design.get("r_scale", 0.7071))
         critical = _critical_t_for_bf(int(n1), int(n2), threshold, method, r_scale)
         bf_values: list[float] = []
+        bf_beyond_range = 0
+        from powerbench.specialist_extras import BayesFactorOverflowError
         for _ in range(simulations):
             x = rng.normal(0, 1, int(n1))
             y = rng.normal(d, 1, int(n2))
             pooled = sqrt(((int(n1) - 1) * x.var(ddof=1) + (int(n2) - 1) * y.var(ddof=1)) / (int(n1) + int(n2) - 2))
             tstat = (y.mean() - x.mean()) / (pooled * (1 / int(n1) + 1 / int(n2)) ** 0.5) if pooled else 0.0
             rejected += abs(tstat) >= critical
-            bf10 = jzs_bf10_from_t(tstat, int(n1), int(n2), r_scale) if method == "jzs" else bic_bf10_from_t(tstat, int(n1) + int(n2))
+            try:
+                bf10 = jzs_bf10_from_t(tstat, int(n1), int(n2), r_scale) if method == "jzs" else bic_bf10_from_t(tstat, int(n1) + int(n2))
+            except BayesFactorOverflowError:
+                bf_beyond_range += 1  # decisive; counted, never dropped or replaced by a finite value
+                continue
             if np.isfinite(bf10) and bf10 > 0:
                 bf_values.append(float(bf10))
     elif s.model == "group_sequential_t":
@@ -784,5 +790,13 @@ def simulate(s: Scenario, n1: int | None = None, n2: int | None = None, n_total:
             "mean_bf10": float(np.mean(bf_values)) if bf_values else 0.0,
             "median_bf10": float(np.median(bf_values)) if bf_values else 0.0,
             "mean_log_bf10": float(np.mean(logs)) if logs.size else float("-inf"),
+            "bf10_beyond_numeric_range": bf_beyond_range,
         }
+        if bf_beyond_range:
+            # Summaries over the representable values alone would understate the evidence.
+            values = sorted(bf_values) + [float("inf")] * bf_beyond_range
+            median = values[len(values) // 2] if len(values) % 2 else (values[len(values) // 2 - 1] + values[len(values) // 2]) / 2
+            result["bayes_diagnostics"].update(
+                mean_bf10=None, mean_log_bf10=None, median_bf10=float(median) if np.isfinite(median) else None,
+                note=f"{bf_beyond_range} replicate(s) had BF10 above exp(709); means are undefined and a median beyond that range is reported as null.")
     return result

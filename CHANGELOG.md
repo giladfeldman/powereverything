@@ -1,8 +1,5 @@
 # Changelog
 
-
-- Tighten supported parameter combinations and scientific snapshot identity; disclose actual prior defaults; preserve fixed-sample goals and reject bounded rewrite count/sidedness changes (requested Sonnet/Opus review controls).
-
 All notable changes to PowerBench are recorded here. Entries that change a computed number
 state the **numeric impact**, because a user planning a study needs to know what moved and
 by how much, not merely that something improved.
@@ -15,6 +12,28 @@ version and only when a method's answers change. See
 
 ## 0.9.0 — release candidate, not yet published
 
+- Exact decimal allocation (2026-10-23): declared decimal ratios and integer pairs are
+  rounded with exact half-up integer arithmetic instead of floating ceil/round. At
+  first-arm N=100 and ratio 1.1 the second arm is now 110, not 111; for d=.4,
+  alpha=.05 and target .8198093291085915 the required total changes from 211 to 210;
+  a log-rank total of 67 at ratio .072 splits 63+4, not 62+5. Final method versions:
+  two_sample_t 1.2.0, welch_t 1.2.0, two_sample_proportion 1.1.0, tost_equivalence 1.2.0,
+  bayes_factor_t 1.2.0, noninferiority_t 1.1.0, rope_equivalence_t 1.1.0, logrank_two_arm 1.5.0.
+- Planning defaults are disclosed (2026-10-23): every value the field parser substitutes
+  (target power .95, attrition 0, allocation 1, survival follow-up/hazards, prior and
+  residual-SD defaults) is listed in the assumptions, the reporting defaults ledger and
+  the APA draft. A disclosure must match the scenario value it names or the request is
+  rejected; anonymous snapshots keep these checked lines and no other assumption text.
+  No computed number changes.
+- `planning.assumption_sensitivity()` returns the required-N rows around the stated
+  effect (and tau) without simulation, identical to `make_plan`; log-rank hazard-ratio
+  rows now re-derive the event probability and complete instead of all failing.
+- Anonymous snapshots keep `direct_cprime` and refuse to drop any field the method's
+  schema defines; non-numeric attrition raises ValueError; the plan report compares
+  the external tool's N instead of printing its status; two simulation templates are
+  labelled as Welch surrogates rather than mixed models.
+- Bayes-factor simulation counts replicates whose BF10 exceeds exp(709) in
+  `bf10_beyond_numeric_range` instead of aborting the whole run; means become null.
 - Strict model-specific effect/design fields reject unsupported adjustments and
   inconsistent derived GOF effects; capabilities expose the accepted field names.
   Legitimate logistic allocation and other supported variants remain covered by R.
@@ -45,17 +64,17 @@ version and only when a method's answers change. See
 - Includes packaged R adapters, scenarios, method attribution and signed G*Power captures.
 - Preserves explicit historical power .80. Method versions explicitly identify numerical
   corrections; historical results are never silently relabelled as current validation.
-- Two-sample t method 1.1.0 includes the two-per-arm lower boundary and uses reflected
+- Two-sample t method 1.1.0 (now 1.2.0, see allocation above) includes the two-per-arm lower boundary and uses reflected
   survival probabilities for extreme noncentral-t tails. At d=6, alpha=.05 and target
   .80, required N changes from 6 to 4 (two per arm). At d=10 and target .999,
   required N changes from 8 to 6; an intermediate SciPy NaN previously misled the search.
-- Bayes-factor method 1.1.0 integrates the entire Cauchy prior through a stable
+- Bayes-factor method 1.1.0 (now 1.2.0, see allocation above) integrates the entire Cauchy prior through a stable
   half-normal mixture. For t=3, n1=n2=50 and r=.7071, BF10 changes from
   10.552472875 to 10.383633507; independent R BayesFactor agrees with the latter.
 - Sequential method 2.2.0 uses seeded bounded QMC and integer minimality search;
   balanced d=.4, alpha=.05 and target .80 changes from total N=200 to 198.
   Requested integration tolerances are not certified error bounds.
-- Log-rank method 1.4.0 evaluates actual integer arm allocation and reweights
+- Log-rank method 1.4.0 (now 1.5.0, see allocation above) evaluates actual integer arm allocation and reweights
   hazard-derived event probabilities at that allocation. A supplied aggregate event
   probability remains a declared constant. Nominal and realized probabilities are explicit.
   Search checks all smaller totals within its documented rounded/clamped allocation rule:

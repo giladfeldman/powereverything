@@ -126,3 +126,18 @@ def test_forged_default_disclosure_is_rejected():
     request["scenario"]["assumptions"].append(WIZARD_DEFAULT_PREFIX + "effect.cohens_d = 0.2")
     with pytest.raises(ValueError, match="does not match"):
         analyze(request)
+
+
+def test_bayes_simulation_survives_bayes_factors_beyond_float_range():
+    """powerbench-review 2026-10-23: jzs_bf10_from_t now raises above exp(709); the
+    simulation called it unguarded, so one huge replicate aborted the whole run."""
+    from powerbench.schema import DecisionRule, Scenario
+    from powerbench.simulation import simulate
+    s = Scenario(id="t", title="t", framework="bayesian", goal="required_sample_size", model="bayes_factor_t",
+                 target_power=0.95, effect={"cohens_d": 5.0}, design={"allocation_ratio": 1.0, "bf_threshold": 3, "bf_method": "jzs"},
+                 decision_rule=DecisionRule(alpha=0.05, alternative="two.sided"), simulation={"seed": 1, "replications": 20})
+    result = simulate(s, n1=600, n2=600)
+    diagnostics = result["bayes_diagnostics"]
+    assert diagnostics["bf10_beyond_numeric_range"] == 20
+    assert diagnostics["mean_bf10"] is None and diagnostics["median_bf10"] is None
+    assert result["power"] == 1.0
