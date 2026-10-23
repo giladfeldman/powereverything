@@ -11,8 +11,10 @@ from .contracts import normalize
 from .provenance import input_hash
 from .reproducibility import reproduction
 
+SNAPSHOT_NUMERIC_FIELDS = frozenset({"n1", "n2", "n_total", "n_per_group", "n_per_cell", "power", "target_power", "detectable_effect", "cohens_w", "n_events"})
+
 _EFFECT = {"margin", "baseline_category_probs", "p_baseline", "p_event", "cohens_d", "cohens_dz", "rho", "cohens_f", "cohens_f2", "mean_difference", "sd_group1", "sd_group2", "p_null", "p_alternative", "p_group1", "p_group2", "joint_probabilities", "odds_ratio", "rate_ratio", "hazard_ratio", "true_difference", "sd", "lower_bound", "upper_bound", "a_path", "b_path"}
-_DESIGN = {"family_alpha", "primary_tests", "allocation_ratio", "equal_variance", "attrition_rate", "groups", "predictors", "total_predictors", "tested_predictors", "categories", "rows", "cols", "min_expected_count", "levels_a", "levels_b", "covariate_r2", "contrast_weights", "studies", "tau", "hartung_knapp", "looks", "bf_threshold", "r_scale", "prior_sd", "rope_threshold", "p_event", "control_hazard", "accrual_years", "followup_years", "dropout_hazard", "baseline_rate", "exposure", "baseline_probability", "predictor_r2", "x_variance", "x_probability", "x_mean", "x_sd", "residual_sd", "residual_sd_y", "residual_sd_m"}
+_DESIGN = {"allocation_numerator", "allocation_denominator","family_alpha", "primary_tests", "allocation_ratio", "equal_variance", "attrition_rate", "groups", "predictors", "total_predictors", "tested_predictors", "categories", "rows", "cols", "min_expected_count", "levels_a", "levels_b", "covariate_r2", "contrast_weights", "studies", "tau", "hartung_knapp", "looks", "bf_threshold", "r_scale", "prior_sd", "rope_threshold", "p_event", "control_hazard", "accrual_years", "followup_years", "dropout_hazard", "baseline_rate", "exposure", "baseline_probability", "predictor_r2", "x_variance", "x_probability", "x_mean", "x_sd", "residual_sd", "residual_sd_y", "residual_sd_m"}
 
 
 def _numeric(value):
@@ -32,6 +34,8 @@ def anonymous_snapshot(result: dict) -> dict:
     provenance = result.get("provenance", {})
     if not isinstance(provenance, dict) or provenance.get("input_sha256") != input_hash(request):
         raise ValueError("Stored scientific input hash does not match the original request")
+    if request.get("operation") in {"compare","simulate"}:
+        return _anonymous_composite(result)
     source = request.get("scenario", {})
     if not isinstance(source, dict) or request.get("operation") not in {"plan", "power", "detectable_effect"}:
         raise ValueError("A portable scientific scenario and operation are required")
@@ -59,7 +63,7 @@ def anonymous_snapshot(result: dict) -> dict:
     original = result.get("result", result.get("reference", {}))
     if not isinstance(original, dict) or not original:
         raise ValueError("A complete numeric result is required for sharing")
-    values = {k: _numeric(v) for k, v in original.items() if k in {"n1", "n2", "n_total", "n_per_group", "n_per_cell", "power", "target_power", "detectable_effect", "cohens_w", "n_events"}}
+    values = {k: _numeric(v) for k, v in original.items() if k in SNAPSHOT_NUMERIC_FIELDS}
     if result.get("status", "complete") != "complete":
         raise ValueError("Only completed results may be shared")
     provenance = result.get("provenance", {})
@@ -76,7 +80,7 @@ def anonymous_snapshot(result: dict) -> dict:
     replay = analyze(normalized)
     if replay.get("status") != "complete":
         raise ValueError("Sanitized request did not reproduce a complete result")
-    expected_fields = set(replay["result"]) & {"n1", "n2", "n_total", "n_per_group", "n_per_cell", "power", "target_power", "detectable_effect", "cohens_w", "n_events"}
+    expected_fields = set(replay["result"]) & SNAPSHOT_NUMERIC_FIELDS
     if set(values) != expected_fields:
         raise ValueError("Stored result is missing required scientific quantities")
     for key, value in values.items():
@@ -103,3 +107,54 @@ def anonymous_snapshot(result: dict) -> dict:
     return {"schema_version": "1.0", "anonymization_version": "1.2", "status": "complete", "operation": normalized["operation"], "normalized_request": normalized, "result": values,
             "warnings": ["Identity metadata and source documents are excluded. Scientific details may still reveal identity; review this exact snapshot before sharing."],
             "provenance": shared_provenance, "reproduction": scripts, "reporting": replay.get("reporting", {}), "citations": replay.get("citations", [])}
+
+
+def _anonymous_composite(result: dict) -> dict:
+    """Regenerate composite science; never copy caller-authored prose or scripts."""
+    from . import __version__
+    from .api import analyze
+    from .simulation_lab import normalize_simulation
+    stored=result.get("provenance",{})
+    request=result["normalized_request"]
+    if stored.get("engine_version") != __version__:
+        raise ValueError("Historical composites require their original engine; recalculate before sharing")
+    replay=analyze(request)
+    if replay.get("status") != "complete" or stored.get("method_id") != replay["provenance"]["method_id"] or stored.get("method_version") != replay["provenance"]["method_version"]:
+        raise ValueError("Composite method provenance does not match this implementation")
+    if request["operation"] == "compare":
+        if request.get("execution") != "analytic":
+            raise ValueError("Only portable analytic comparisons currently support anonymous sharing")
+        if result.get("deltas") != replay["deltas"]:
+            raise ValueError("Stored comparison deltas do not match reproduction")
+        clean_plans={}
+        for key in ("planA","planB"):
+            original=result.get(key,{})
+            if not isinstance(original,dict):
+                raise ValueError("Stored comparison plans must be scientific objects")
+            if original.get("result") != replay[key]["result"]:
+                raise ValueError("Stored comparison plan does not match reproduction")
+            clean_plans[key]=anonymous_snapshot(replay[key])["normalized_request"]
+        sanitized={"operation":"compare","execution":"analytic",**clean_plans}
+    else:
+        excluded={"provenance","reproduction","browser_execution","record_verification"}
+        if {k:v for k,v in result.items() if k not in excluded} != {k:v for k,v in replay.items() if k not in excluded}:
+            raise ValueError("Stored simulation does not match reproduction")
+        sanitized={"operation":"simulate","payload":normalize_simulation(request["payload"])}
+    fresh=replay if sanitized == replay["normalized_request"] else analyze(sanitized)
+    values=composite_numeric_claims(fresh)
+    return {"schema_version":"1.0","anonymization_version":"1.3","status":"complete","operation":sanitized["operation"],
+            "normalized_request":fresh["normalized_request"],"result":values,
+            "provenance":{"engine_version":__version__,"method_id":fresh["provenance"]["method_id"],"method_version":fresh["provenance"]["method_version"],"input_sha256":input_hash(fresh["normalized_request"])},
+            "warnings":["Identity, free text and source documents are excluded. Scientific details may reveal identity. Replay before interpretation."],
+            "reproduction":fresh.get("reproduction",[])}
+
+
+def composite_numeric_claims(result: dict) -> dict:
+    """Small comparison/simulation display protocol; full checks remain in replay."""
+    if result.get("operation") == "compare":
+        a,b=result["planA"]["result"],result["planB"]["result"]
+        return {"n_total_a":a["n_total"],"n_total_b":b["n_total"],"power_a":a["power"],"power_b":b["power"],
+                "delta_n_total":result["deltas"]["n_total"],"delta_recruitment_total":result["deltas"]["recruitment_total"],"delta_analytic_power":result["deltas"]["analytic_power"]}
+    if result.get("operation") == "simulate":
+        return {key:result[key] for key in ("power","type_i_error","replications","failures")}
+    raise ValueError("A composite scientific result is required")

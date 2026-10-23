@@ -13,6 +13,40 @@ from .specialist_extras import derive_logrank_event_probability
 
 DEFAULT_TARGET_POWER = 0.95
 
+# Model-specific wizard fields; unknown keys must never silently alter a request.
+WIZARD_FIELDS = {
+    'two_sample_t': ['allocation_ratio', 'attrition_rate', 'effect', 'equal_variance'],
+    'welch_t': ['allocation_ratio', 'attrition_rate', 'effect', 'sd_group1', 'sd_group2'],
+    'paired_t': ['attrition_rate', 'effect'],
+    'one_sample_proportion': ['attrition_rate', 'effect', 'p_null'],
+    'two_sample_proportion': ['allocation_ratio', 'attrition_rate', 'effect', 'p_group1'],
+    'chi_square_gof': ['attrition_rate', 'p_alternative', 'p_null'],
+    'one_way_anova': ['attrition_rate', 'effect', 'groups'],
+    'linear_regression': ['attrition_rate', 'effect', 'predictors'],
+    'incremental_regression': ['attrition_rate', 'effect', 'tested_predictors', 'total_predictors'],
+    'correlation': ['attrition_rate', 'effect'],
+    'chi_square_independence': ['attrition_rate', 'joint_probabilities'],
+    'factorial_anova': ['attrition_rate', 'effect', 'levels_a', 'levels_b', 'tested_term'],
+    'ancova': ['attrition_rate', 'covariate_r2', 'effect', 'groups'],
+    'planned_contrast': ['attrition_rate', 'contrast_weights', 'effect'],
+    'moderation': ['attrition_rate', 'effect', 'total_predictors'],
+    'logistic_regression': ['allocation_ratio', 'attrition_rate', 'effect', 'p_baseline', 'predictor_type'],
+    'poisson_regression': ['attrition_rate', 'baseline_rate', 'effect', 'exposure'],
+    'tost_equivalence': ['allocation_ratio', 'attrition_rate', 'lower_bound', 'sd', 'true_difference', 'upper_bound'],
+    'mediation_indirect': ['a_path', 'attrition_rate', 'b_path', 'direct_cprime', 'residual_sd_m', 'residual_sd_y'],
+    'meta_analysis_fixed': ['attrition_rate', 'effect', 'studies'],
+    'meta_analysis_random': ['attrition_rate', 'effect', 'studies', 'tau'],
+    'noninferiority_t': ['allocation_ratio', 'attrition_rate', 'margin', 'sd', 'true_difference'],
+    'ordinal_regression': ['allocation_ratio', 'attrition_rate', 'categories', 'effect'],
+    'bayes_factor_t': ['allocation_ratio', 'attrition_rate', 'bf_method', 'bf_threshold', 'effect', 'r_scale'],
+    'group_sequential_t': ['allocation_ratio', 'attrition_rate', 'effect', 'looks'],
+    'logrank_two_arm': ['accrual_years', 'allocation_ratio', 'attrition_rate', 'control_hazard', 'dropout_hazard', 'effect', 'followup_years', 'hazard_ratio', 'p_event'],
+    'rope_equivalence_t': ['allocation_ratio', 'attrition_rate', 'lower_bound', 'prior_sd', 'rope_threshold', 'sd', 'true_difference', 'upper_bound'],
+}
+
+COMMON_WIZARD_FIELDS = {"model", "goal", "target_power", "alpha", "alternative", "attrition_rate", "multiplicity_method", "primary_tests", "n1", "n2", "n_total"}
+
+
 def _number(payload: dict[str, Any], key: str) -> float:
     try:
         value=payload[key]
@@ -37,13 +71,39 @@ def _probabilities(payload: dict[str, Any], key: str) -> list[float]:
 
 def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, float, int]:
     """Create an assumption-visible plan from the app's intentionally small v0.1 wizard."""
+    if not isinstance(payload,dict):
+        raise ValueError("Planner fields must be an object")  # noqa: TRY004 -- portable JSON validation contract
     model = payload.get("model")
+    if not isinstance(model,str) or model not in WIZARD_FIELDS:
+        raise ValueError("Unrecognized planner model")
+    from .schema import EXACT_ALLOCATION_MODELS
+    pair_fields={"allocation_numerator","allocation_denominator"} if model in EXACT_ALLOCATION_MODELS else set()
+    unknown=set(payload)-COMMON_WIZARD_FIELDS-set(WIZARD_FIELDS[model])-pair_fields
+    if unknown:
+        raise ValueError("Unrecognized planner field(s): "+", ".join(sorted(unknown)))
     payload=dict(payload)
+    allocation=payload.get("allocation_ratio")
+    if isinstance(allocation,str) and ":" in allocation:
+        from .schema import EXACT_ALLOCATION_MODELS
+        if model not in EXACT_ALLOCATION_MODELS:
+            raise ValueError("This method currently accepts a decimal allocation ratio only")
+        parts=allocation.split(":")
+        if len(parts)!=2 or any(not value.strip().isdigit() for value in parts):
+            raise ValueError("Use an integer n2:n1 allocation pair, such as 5:3")
+        from .allocation import declared_allocation_ratio
+        payload["allocation_numerator"],payload["allocation_denominator"]=map(int,parts)
+        payload.pop("allocation_ratio")
+        payload["allocation_ratio"]=float(declared_allocation_ratio(payload))
+    if "allocation_numerator" in payload or "allocation_denominator" in payload:
+        from .allocation import declared_allocation_ratio
+        pair={key:payload[key] for key in ("allocation_numerator","allocation_denominator") if key in payload}
+        if "allocation_ratio" in payload:pair["allocation_ratio"]=_number(payload,"allocation_ratio")
+        payload["allocation_ratio"]=float(declared_allocation_ratio(pair))
     if isinstance(payload.get("equal_variance"),str):
         value=payload["equal_variance"].lower()
         if value not in {"true","false"}:raise ValueError("equal_variance must be boolean")
         payload["equal_variance"]=value=="true"
-    payload = {"target_power": DEFAULT_TARGET_POWER, **payload}
+    payload = {"target_power": DEFAULT_TARGET_POWER, "attrition_rate": 0, **payload}
     target_power = _number(payload, "target_power")
     rate = payload.get("attrition_rate", 0)
     if isinstance(rate, bool) or not 0 <= float(rate) < 1:
@@ -89,7 +149,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
             "Independent observations and approximately normal outcomes within each group.",
             "The planned analysis is Welch's unequal-variance t-test, using a raw mean difference and one SD for each group.",
             "The analytic result is a Welch-Satterthwaite noncentral-t planning approximation, not a pooled-variance t calculation.",
-            "The independent simulation generates group-specific variances and applies Welch's t-test directly.",
+            "When requested, the separate simulation check generates group-specific variances and applies Welch's t-test directly.",
         ]
     elif model == "paired_t":
         effect = {"cohens_dz": _number(payload, "effect"), "parameterization": "standardized_mean_change"}
@@ -149,7 +209,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         title = "Linear regression overall-model plan"
         assumptions = [
             "The target is the overall R-squared test for the stated number of predictors, using Cohen's f-squared.",
-            "The analytic reference is a fixed-design noncentral-F approximation; the independent simulation uses normal predictors and errors.",
+            "The analytic reference is a fixed-design noncentral-F approximation; the optional separate simulation check uses normal predictors and errors.",
             "For one focal predictor, covariates, interactions, collinearity, or non-normal outcomes, use a design-specific simulation path.",
         ]
     elif model == "incremental_regression":
@@ -158,7 +218,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         title = "Incremental linear regression plan"
         assumptions = [
             "The target is a pre-specified block of predictors, expressed as incremental Cohen's f-squared.",
-            "The reference uses a fixed-design noncentral F calculation; the simulation uses independent normal predictors and errors.",
+            "The reference uses a fixed-design noncentral F calculation; the optional separate simulation check uses independent normal predictors and errors.",
             "Correlated covariates, interactions, reliability, nonlinear terms, and non-normal outcomes must be modeled in a design-specific simulation.",
         ]
     elif model == "correlation":
@@ -168,7 +228,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         assumptions = [
             "The target is Pearson's correlation, not a rank or partial correlation.",
             "The analytic result uses a Fisher-z normal approximation.",
-            "The simulation assumes a bivariate normal population.",
+            "The optional separate simulation check assumes a bivariate normal population.",
         ]
     elif model == "chi_square_independence":
         rows = [[float(cell) for cell in str(row).split(":")] for row in str(payload.get("joint_probabilities", "")).split(";")]
@@ -376,8 +436,16 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         dropout_hazard = _number(payload, "dropout_hazard") if payload.get("dropout_hazard") not in (None, "") else 0.0
         control_hazard = _number(payload, "control_hazard") if payload.get("control_hazard") not in (None, "") else 1.0
         hazard_ratio = _number(payload, "effect") if payload.get("effect") not in (None, "") else _number(payload, "hazard_ratio")
+        if payload.get("effect") not in (None, "") and payload.get("hazard_ratio") not in (None, "") and _number(payload,"hazard_ratio") != hazard_ratio:
+            raise ValueError("Conflicting hazard ratio aliases: effect and hazard_ratio differ")
+        hazard_fields=("control_hazard","accrual_years","followup_years","dropout_hazard")
+        supplied_hazards=any(payload.get(key) not in (None,"") for key in hazard_fields)
         if payload.get("p_event") not in (None, ""):
             p_event = _number(payload, "p_event")
+            if supplied_hazards:
+                derived=derive_logrank_event_probability(hazard_ratio,control_hazard,accrual_years,followup_years,dropout_hazard,allocation_ratio)
+                if abs(derived-p_event)>1e-10:
+                    raise ValueError("Conflicting event probability and hazard/follow-up inputs; choose one parameterization or supply matching values")
         else:
             # Single source of truth: the engine owns this derivation, so the planner and
             # `required_n_logrank_two_arm` cannot drift apart.
@@ -397,7 +465,7 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
             "control_hazard": control_hazard,
             "attrition_rate": _number(payload, "attrition_rate"),
         }
-        if payload.get("p_event") not in (None, ""):
+        if payload.get("p_event") not in (None, "") and not supplied_hazards:
             # Supplied event probability is the declared parameterization; do not
             # insert hazard/follow-up defaults that cause the reference to replace it.
             design = {"allocation_ratio": allocation_ratio, "attrition_rate": _number(payload, "attrition_rate")}
@@ -405,8 +473,8 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         assumptions = [
             "The primary analysis is a two-arm log-rank test under proportional hazards.",
             "Events are planned via the Schoenfeld formula; total N = required events / p_event under administrative censoring.",
-            (f"Planning event probability p_event={p_event:.17g} is supplied directly; hazard-based event derivation is not used." if payload.get("p_event") not in (None, "") else f"Planning event probability p_event={p_event:.17g} is derived from accrual={accrual_years:g}y, follow-up={followup_years:g}y, and dropout hazard={dropout_hazard:g}."),
-            "Exponential event times are assumed for the independent simulation; delayed entry, competing risks, and non-PH need a design-specific simulation.",
+            (f"Planning event probability p_event={p_event:.17g} is supplied directly; hazard-based event derivation is not used." if payload.get("p_event") not in (None, "") and not supplied_hazards else f"Planning event probability p_event={p_event:.17g} is derived from accrual={accrual_years:g}y, follow-up={followup_years:g}y, and dropout hazard={dropout_hazard:g}."),
+            "The optional separate simulation check assumes exponential event times; delayed entry, competing risks, and non-PH need a design-specific simulation.",
         ]
     elif model == "rope_equivalence_t":
         effect = {
@@ -444,6 +512,12 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
         )
     if multiplicity_method != "none":
         design.update(family_alpha=family_alpha, primary_tests=primary_tests)
+    if "allocation_numerator" in payload or "allocation_denominator" in payload:
+        from .allocation import declared_allocation_ratio
+        pair={key:payload[key] for key in ("allocation_numerator","allocation_denominator") if key in payload}
+        if "allocation_ratio" in payload:pair["allocation_ratio"]=_number(payload,"allocation_ratio")
+        design.update(pair)
+        design["allocation_ratio"]=float(declared_allocation_ratio(design))
     scenario = Scenario(
         id="studio-preview",
         title=title,
@@ -463,6 +537,8 @@ def scenario_from_fields(payload: dict[str, Any]) -> tuple[Scenario, float, floa
 
 
 def make_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("goal","required_sample_size") != "required_sample_size" or any(payload.get(key) not in (None,"") for key in ("n1","n2","n_total")):
+        raise ValueError("make_plan requires a required-sample-size goal without fixed sample counts")
     scenario, family_alpha, alpha, primary_tests = scenario_from_fields(payload)
     model, design = scenario.model, scenario.design
     reference = analytic_reference(scenario)
@@ -516,15 +592,26 @@ def make_plan(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def analyze_fields(payload: dict[str, Any]) -> dict[str, Any]:
-    """Compatibility wizard fields normalized inside the scientific library."""
+    """Compatibility wizard calculation; native required-N includes its checks."""
+    request=request_from_fields(payload)
+    if payload.get("goal","required_sample_size") == "required_sample_size":
+        return make_plan(payload)
+    from .api import analyze
+    return analyze(request)
+
+
+def request_from_fields(payload: dict[str, Any]) -> dict[str, Any]:
+    """Normalize wizard fields without running a calculation or external tool."""
+    if not isinstance(payload,dict):
+        raise ValueError("Planner fields must be an object")  # noqa: TRY004 -- portable JSON contract
     goal = payload.get("goal", "required_sample_size")
     if goal == "required_sample_size":
         if any(payload.get(key) not in (None, "") for key in ("n1", "n2", "n_total")):
             raise ValueError("Sample counts require an explicit achieved_power or sensitivity goal")
-        return make_plan(payload)
+        scenario,*_=scenario_from_fields(payload)
+        return {"operation":"plan","scenario":scenario.to_dict()}
     if goal not in {"achieved_power", "sensitivity"}:
         raise ValueError("Unrecognized analysis goal")
-    from .api import analyze
     from .capabilities import FIXED_MODELS
     from .power import count
     model = payload.get("model")
@@ -532,9 +619,10 @@ def analyze_fields(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("This method does not yet support a validated fixed-sample mode")
     sample = {k: payload[k] for k in ("n1", "n2", "n_total") if payload.get(k) not in (None, "")}
     source = {"target_power": DEFAULT_TARGET_POWER, "attrition_rate": 0, **payload}
-    source["attrition_rate"] = 0
     if model in {"two_sample_t", "welch_t"}:
-        source["allocation_ratio"] = count(sample.get("n2"), "n2") / count(sample.get("n1"), "n1")
+        source["allocation_numerator"] = count(sample.get("n2"), "n2")
+        source["allocation_denominator"] = count(sample.get("n1"), "n1")
+        source["allocation_ratio"] = source["allocation_numerator"] / source["allocation_denominator"]
     if goal == "sensitivity" or payload.get("effect") in (0, "0", "0.0"):
         source["effect"] = 1e-6
     scenario, *_ = scenario_from_fields(source)
@@ -544,7 +632,7 @@ def analyze_fields(payload: dict[str, Any]) -> dict[str, Any]:
     # Fixed-power requests retain a target solely when the caller supplied it.
     target = None if goal == "achieved_power" and payload.get("target_power") in (None, "") else scenario.target_power
     scenario = replace(scenario, goal=goal, target_power=target)
-    return analyze({"operation": "power" if goal == "achieved_power" else "detectable_effect", "scenario": scenario.to_dict(), "sample": sample})
+    return {"operation": "power" if goal == "achieved_power" else "detectable_effect", "scenario": scenario.to_dict(), "sample": sample}
 
 
 def _reference_simulation_alignment(reference: dict[str, Any], simulation: dict[str, Any]) -> dict[str, str]:

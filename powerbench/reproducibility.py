@@ -6,6 +6,7 @@ import io
 import json
 import zipfile
 
+from .allocation import declared_allocation_ratio
 from .capabilities import R_MODELS
 from .provenance import canonical_json
 
@@ -62,13 +63,27 @@ def r_script(request: dict) -> str | None:
     two = model in {"two_sample_t", "welch_t"}
     if op == "plan":
         if two:
-            header += f"n1 <- 2L; ratio <- {float(d.get('allocation_ratio', 1))!r}\nn2 <- max(2L,ceiling(n1*ratio))\n"
+            ratio = declared_allocation_ratio(d)
+            # Base R numbers represent integers exactly only within this budget.
+            # Fail explicitly outside it instead of silently approximating a ceiling.
+            header += (
+                f"ratio_num <- {ratio.numerator}; ratio_den <- {ratio.denominator}\n"
+                "arm_count <- function(n) {\n"
+                "  if (ratio_num > 2^52 || ratio_den > 2^52 || n*ratio_num > 2^52) "
+                "stop('Exact decimal allocation exceeds base-R integer budget; use the Python reproduction')\n"
+                "  product <- n*ratio_num; q <- floor(product/ratio_den)\n"
+                "  remainder <- product-q*ratio_den\n"
+                "  if (remainder < 0) { q <- q-1; remainder <- product-q*ratio_den }\n"
+                "  if (remainder >= ratio_den) { q <- q+1; remainder <- product-q*ratio_den }\n"
+                "  max(2, q+as.numeric(remainder > 0))\n}\n"
+                "n1 <- 2L; n2 <- arm_count(n1)\n"
+            )
         else:
             minimum = 4 if model == "correlation" else (int(d["groups"]) * 2 if model == "one_way_anova" else int(d.get("predictors", d.get("total_predictors", 0))) + 2)
             header += f"n1 <- {minimum}L; n2 <- 0L\n"
         step = int(d["groups"]) if model == "one_way_anova" else 1
         header += f"while(power_at(n1,n2,effect)<target) {{ n1 <- n1+{step}L; if(n1>1e7) stop('Search budget exhausted'); "
-        header += "n2 <- max(2L,ceiling(n1*ratio))" if two else "n2 <- 0L"
+        header += "n2 <- arm_count(n1)" if two else "n2 <- 0L"
         header += " }\n"
     else:
         header += f"n1 <- {int(sample['n1'] if two else sample['n_total'])}L; n2 <- {int(sample['n2']) if two else 0}L\n"
@@ -93,6 +108,8 @@ def reproduction(request: dict) -> list[dict]:
 
 def export_bundle(result: dict) -> bytes:
     """Export science only. Caller must sanitize any user-authored free text before sharing."""
+    if not isinstance(result,dict):
+        raise ValueError("A scientific result object is required")  # noqa: TRY004 -- JSON validation contract
     from . import __version__
     if result.get("provenance", {}).get("engine_version") != __version__:
         raise ValueError("Historical bundles must be exported using their original engine version")
@@ -116,19 +133,56 @@ def export_bundle(result: dict) -> bytes:
     saved_result = result.get("reference") if legacy else result.get("result")
     if legacy and (request.get("operation") != "plan" or not isinstance(saved_result, dict)):
         raise ValueError("Legacy export requires a canonical plan request and reference result")
+    if request.get("operation") == "compare":
+        if result.get("deltas") != replay.get("deltas"):
+            raise ValueError("Stored comparison deltas do not match the scientific reproduction")
+        analytic=request.get("execution") == "analytic"
+        for key in ("planA", "planB"):
+            original_plan=result.get(key)
+            if not isinstance(original_plan,dict):
+                raise ValueError("Stored comparison requires both scientific plans")  # noqa: TRY004 -- JSON validation contract uses ValueError.
+            fields=("result",) if analytic else ("reference", "simulation")
+            if any(original_plan.get(field) != replay[key].get(field) for field in fields):
+                raise ValueError("Stored comparison plan does not match the scientific reproduction")
+    if request.get("operation") == "simulate":
+        # Compare the scientific body, including datasets and Monte Carlo checks.
+        # Only regenerated scripts and environment/time provenance are excluded.
+        excluded={"provenance","reproduction","browser_execution","record_verification"}
+        scientific=lambda record:{key:value for key,value in record.items() if key not in excluded}
+        if scientific(result) != scientific(replay):
+            raise ValueError("Stored simulation does not match its scientific reproduction")
     if replay.get("result") != saved_result:
         raise ValueError("Stored result does not match its scientific reproduction")
+    return _serialize_bundle(replay,legacy=legacy)
+
+
+def export_request_bundle(request: dict, progress=None) -> bytes:
+    """Calculate once and export a request; no stored-result certification is implied."""
+    if not isinstance(request,dict):
+        raise ValueError("A scientific request object is required")  # noqa: TRY004 -- JSON validation contract
+    if request.get("operation") == "simulate":
+        from .simulation_lab import run
+        result=run(request.get("payload",{}),progress)
+    else:
+        from .api import analyze
+        result=analyze(request)
+    if result.get("status") != "complete":
+        raise ValueError("Only completed calculations can be exported")
+    return _serialize_bundle(result)
+
+
+def _serialize_bundle(result: dict, legacy: bool = False) -> bytes:
+    from . import __version__
     # Reconstruct every executable/reporting artifact from the validated request.
     # Stored prose, scripts, citations and dependency strings are untrusted, even
     # when their numeric result still matches. Do not mutate the saved record.
-    result = replay
     result["provenance"].pop("execution", None)
     request = result["normalized_request"]
     legacy_note = ("Legacy wizard records are exported here as their canonical scientific calculation. "
                    "Legacy simulation diagnostics and assumption sweeps are not included in this calculation bundle; "
                    "their full make_plan reproduction remains available in the original planner result.\n\n") if legacy else ""
     entries = {
-        "README.md": "# Reproduce this analysis\n\nThis bundle was recomputed from the normalized request using the stated engine and method. Stored prose, scripts, citations and dependency strings were regenerated; the saved original was not modified.\n\nCreate a fresh Python environment, install requirements.lock.txt, then run reproduce.py. R, when supplied, is an independent implementation under the stated assumptions. Numerical agreement does not certify the design.\n",
+        "README.md": "# Reproduce this analysis\n\nThis bundle was recomputed from the normalized request using the stated engine and method. Stored prose, scripts, citations and dependency strings were regenerated; This is a calculation export, not certification of a separately stored result.\n\nCreate a fresh Python environment, install requirements.lock.txt, then run reproduce.py. R, when supplied, is an independent implementation under the stated assumptions. Numerical agreement does not certify the design.\n",
         "request.json": json.dumps(request, indent=2, allow_nan=False),
         "result.json": json.dumps(result, indent=2, allow_nan=False),
         "provenance.json": json.dumps(result.get("provenance", {}), indent=2),
@@ -142,7 +196,7 @@ def export_bundle(result: dict) -> bytes:
     for item in result.get("reproduction", []):
         extension = "py" if item["language"] == "python" else "R"
         entries[f"reproduce.{extension}"] = item["code"]
-    entries["manifest.json"] = json.dumps({"schema_version": "1.0", "bundle_policy_version": "1.1", "content_source": "recomputed_from_normalized_request", "files": {k: hashlib.sha256(v.encode("utf-8")).hexdigest() for k, v in entries.items()}}, indent=2)
+    entries["manifest.json"] = json.dumps({"schema_version": "1.0", "bundle_policy_version": "1.3", "content_source": "recomputed_from_normalized_request", "files": {k: hashlib.sha256(v.encode("utf-8")).hexdigest() for k, v in entries.items()}}, indent=2)
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, content in sorted(entries.items()):

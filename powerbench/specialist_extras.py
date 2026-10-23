@@ -11,6 +11,11 @@ from scipy.optimize import brentq
 from scipy.stats import chi2, multivariate_normal, nct, norm
 from scipy.stats import t as student_t
 
+from .allocation import (
+    allocated_arm_count,
+    declared_allocation_ratio,
+    rounded_control_arm,
+)
 from .references import _noncentral_t_power, required_n_two_sample_t
 from .schema import Scenario
 from .search import SearchBudgetExceeded, check_search_budget
@@ -216,7 +221,7 @@ def bayes_factor_t_power(
 def required_n_bayes_factor_t(s: Scenario) -> dict[str, float | int | str]:
     d = float(s.effect["cohens_d"])
     threshold = float(s.design.get("bf_threshold", 3))
-    ratio = float(s.design.get("allocation_ratio", 1.0))
+    ratio = declared_allocation_ratio(s.design)
     method = str(s.design.get("bf_method", "jzs")).lower()
     r_scale = float(s.design.get("r_scale", 0.7071))
     target = float(s.target_power)
@@ -224,7 +229,7 @@ def required_n_bayes_factor_t(s: Scenario) -> dict[str, float | int | str]:
     low, high = 9, 10
     while True:
         check_search_budget()
-        n2 = max(10, ceil(high * ratio))
+        n2 = allocated_arm_count(high, ratio, minimum=10)
         if bayes_factor_t_power(high, n2, d, threshold, method, r_scale) >= target:
             break
         low, high = high, high * 2
@@ -233,13 +238,13 @@ def required_n_bayes_factor_t(s: Scenario) -> dict[str, float | int | str]:
     while low + 1 < high:
         check_search_budget()
         mid = (low + high) // 2
-        n2 = max(10, ceil(mid * ratio))
+        n2 = allocated_arm_count(mid, ratio, minimum=10)
         if bayes_factor_t_power(mid, n2, d, threshold, method, r_scale) >= target:
             high = mid
         else:
             low = mid
     n1 = high
-    n2 = max(10, ceil(n1 * ratio))
+    n2 = allocated_arm_count(n1, ratio, minimum=10)
     power = bayes_factor_t_power(n1, n2, d, threshold, method, r_scale)
     critical = _critical_t_for_bf(n1, n2, threshold, method, r_scale)
     label = "jzs_cauchy_prior_design_analysis" if method == "jzs" else "bic_approximated_bf10_design_analysis"
@@ -546,12 +551,12 @@ def required_n_noninferiority_t(s: Scenario) -> dict[str, Any]:
     margin = float(s.effect["margin"])
     true_diff = float(s.effect.get("true_difference", 0.0))
     sd = float(s.effect["sd"])
-    ratio = float(s.design.get("allocation_ratio", 1.0))
+    ratio = declared_allocation_ratio(s.design)
     alpha, target = s.decision_rule.alpha, float(s.target_power)
     n1 = 4
     while True:
         check_search_budget()
-        n2 = max(4, ceil(n1 * ratio))
+        n2 = allocated_arm_count(n1, ratio, minimum=4)
         power = noninferiority_t_power(n1, n2, true_diff, sd, margin, alpha)
         if power >= target:
             return {
@@ -691,7 +696,7 @@ def required_n_logrank_two_arm(s: Scenario) -> dict[str, Any]:
     n_total = max(4, ceil(events / p_event))
     # Grow until the discrete N meets target (ceiling may undershoot slightly for one-sided edges).
     def split(total):
-        first = max(2, min(total-2, int(total/(1+ratio)+.5)))
+        first = rounded_control_arm(total, declared_allocation_ratio(s.design))
         return first, total-first
     def event_probability(total):
         if control_hazard is None or followup_years is None:return p_event
@@ -775,14 +780,14 @@ def required_n_rope_equivalence_t(s: Scenario) -> dict[str, Any]:
     lower, upper = float(s.effect["lower_bound"]), float(s.effect["upper_bound"])
     true_diff = float(s.effect.get("true_difference", 0.0))
     sd = float(s.effect["sd"])
-    ratio = float(s.design.get("allocation_ratio", 1.0))
+    ratio = declared_allocation_ratio(s.design)
     prior_sd = float(s.design.get("prior_sd", 10.0))
     threshold = float(s.design.get("rope_threshold", 0.95))
     target = float(s.target_power)
     n1 = 4
     while True:
         check_search_budget()
-        n2 = max(4, ceil(n1 * ratio))
+        n2 = allocated_arm_count(n1, ratio, minimum=4)
         power = rope_equivalence_t_power(n1, n2, true_diff, sd, lower, upper, prior_sd, threshold)
         if power >= target:
             return {

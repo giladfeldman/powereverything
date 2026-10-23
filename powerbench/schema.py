@@ -99,6 +99,10 @@ EFFECT_FIELDS = {
     "two_sample_t": frozenset(['cohens_d', 'parameterization']),
     "welch_t": frozenset(['mean_difference', 'parameterization', 'sd_group1', 'sd_group2']),
 }
+EXACT_ALLOCATION_MODELS = {"two_sample_t","welch_t","two_sample_proportion","tost_equivalence","noninferiority_t","bayes_factor_t","rope_equivalence_t","logrank_two_arm"}
+for _model in EXACT_ALLOCATION_MODELS:
+    DESIGN_FIELDS[_model] = DESIGN_FIELDS[_model] | {"allocation_numerator","allocation_denominator"}
+
 COMMON_DESIGN_FIELDS = frozenset({"attrition_rate", "family_alpha", "primary_tests"})
 
 
@@ -165,6 +169,9 @@ class Scenario:
                 numeric_parameters(value, f"design.{key}")
                 if key != "contrast_weights" and not isinstance(value, (int, float)):
                     raise ValueError(f"design.{key} must be a numeric scalar")
+        if "allocation_numerator" in self.design or "allocation_denominator" in self.design:
+            from .allocation import declared_allocation_ratio
+            declared_allocation_ratio(self.design)
         if "allocation_ratio" in self.design and self.design["allocation_ratio"] <= 0:
             raise ValueError("allocation_ratio must be positive")
         if self.model == "logistic_regression" and self.design.get("predictor_type", "binary") == "continuous" and "allocation_ratio" in self.design:

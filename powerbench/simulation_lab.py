@@ -434,4 +434,5 @@ def run(payload: dict[str, Any], progress: Callable[[int, str], None] | None = N
     result.update(schema_version="1.0", simulation_policy_version="1.3", status="complete", operation="simulate", normalized_request=normalized,
                   provenance=provenance("simulation_lab:" + str(payload.get("template_id")), normalized, "1.3"),
                   reproduction=[{"language": "python", "kind": "exact_reproduction", "code": python_script(normalized)}])
-    return result
+    from .json_values import json_values
+    return json_values(result)

@@ -78,6 +78,9 @@ def normalize(request: dict) -> tuple[dict, Scenario]:
     if not isinstance(value["design"], dict) or not isinstance(value["effect"], dict) or not isinstance(value["decision_rule"], dict):
         raise ValueError("design, effect and decision_rule must be objects")
     numeric_parameters(value["effect"])
+    if "allocation_numerator" in value["design"] or "allocation_denominator" in value["design"]:
+        from .allocation import declared_allocation_ratio
+        value["design"]["allocation_ratio"]=float(declared_allocation_ratio(value["design"]))
     for name in ("groups", "predictors", "total_predictors", "tested_predictors", "categories", "rows", "cols", "levels_a", "levels_b", "studies", "looks"):
         if name in value["design"]:
             from .power import count
@@ -102,6 +105,8 @@ def normalize(request: dict) -> tuple[dict, Scenario]:
             raise ValueError("family_alpha must lie in (0,1)")
         if abs(rule_alpha - family / tests) > 1e-14:
             raise ValueError("Per-test alpha does not match the declared multiplicity planning adjustment")
+    if set(value["decision_rule"]) - {field.name for field in fields(DecisionRule)}:
+        raise ValueError("Unsupported decision_rule fields")
     scenario = Scenario(**{**value, "decision_rule": DecisionRule(**value["decision_rule"])})
     scalar = FIXED_MODELS.get(scenario.model)
     if goal == "sensitivity" and scalar:

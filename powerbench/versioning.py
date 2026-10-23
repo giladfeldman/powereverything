@@ -34,11 +34,11 @@ METHOD_VERSION = "2.0.0"
 
 #: method_id -> semantic version of that method's computed answers.
 METHOD_VERSIONS: dict[str, str] = {
-    "two_sample_t": "1.1.0",
-    "welch_t": "1.1.0",
+    "two_sample_t": "1.2.0",
+    "welch_t": "1.2.0",
     "paired_t": "1.1.0",
     "one_sample_proportion": "1.0.0",
-    "two_sample_proportion": "1.0.0",
+    "two_sample_proportion": "1.1.0",
     "chi_square_gof": "1.0.0",
     "chi_square_independence": "1.0.0",
     "one_way_anova": "1.0.0",
@@ -51,16 +51,16 @@ METHOD_VERSIONS: dict[str, str] = {
     "logistic_regression": "2.0.0",
     "poisson_regression": "1.0.0",
     "correlation": "1.0.0",
-    "tost_equivalence": "1.1.0",
+    "tost_equivalence": "1.2.0",
     "mediation_indirect": "2.1.0",
     "meta_analysis_fixed": "1.0.0",
     "meta_analysis_random": "2.1.0",
-    "noninferiority_t": "1.0.0",
+    "noninferiority_t": "1.1.0",
     "ordinal_regression": "2.0.0",
-    "bayes_factor_t": "1.1.0",
+    "bayes_factor_t": "1.2.0",
     "group_sequential_t": "2.2.0",
-    "logrank_two_arm": "1.4.0",
-    "rope_equivalence_t": "1.0.0",
+    "logrank_two_arm": "1.5.0",
+    "rope_equivalence_t": "1.1.0",
 }
 
 
@@ -78,6 +78,14 @@ class MethodChange:
 #: Newest first. `numeric_impact` must state what moved and by how much -- "improved
 #: accuracy" is not enough for someone deciding whether to re-check their study plan.
 METHOD_CHANGELOG: tuple[MethodChange, ...] = (
+    MethodChange(method_id="logrank_two_arm",version="1.5.0",date="2026-10-23",summary="Round the nominal allocation split with exact decimal or declared integer-pair half-up arithmetic.",numeric_impact="At total N=67 and nominal group-2/group-1 ratio=.072, floating division selected 62+5 although exact nearest half-up allocation is 63+4. Realized power and required N can change near this boundary; the global minimal-N search and two-per-arm minimum are preserved."),
+    MethodChange(method_id="two_sample_t", version="1.2.0", date="2026-10-23", summary="Round the declared decimal allocation ratio with exact integer arithmetic.", numeric_impact='At first-arm N=100 and ratio=1.1, the second arm is now 110 rather than 111. Required N and achieved power can change at exact decimal allocation boundaries; minimum arm sizes are unchanged. For d=.4, alpha=.05 and target=.8198093291085915, the required total changes from 211 to 210.'),
+    MethodChange(method_id="welch_t", version="1.2.0", date="2026-10-23", summary="Round the declared decimal allocation ratio with exact integer arithmetic.", numeric_impact='At first-arm N=100 and ratio=1.1, the second arm is now 110 rather than 111. Required N and achieved power can change at exact decimal allocation boundaries; minimum arm sizes are unchanged.'),
+    MethodChange(method_id="two_sample_proportion", version="1.1.0", date="2026-10-23", summary="Round the declared decimal allocation ratio with exact integer arithmetic.", numeric_impact='At first-arm N=100 and ratio=1.1, the second arm is now 110 rather than 111. Required N and achieved power can change at exact decimal allocation boundaries; minimum arm sizes are unchanged.'),
+    MethodChange(method_id="tost_equivalence", version="1.2.0", date="2026-10-23", summary="Round the declared decimal allocation ratio with exact integer arithmetic.", numeric_impact='At first-arm N=100 and ratio=1.1, the second arm is now 110 rather than 111. Required N and achieved power can change at exact decimal allocation boundaries; minimum arm sizes are unchanged.'),
+    MethodChange(method_id="bayes_factor_t", version="1.2.0", date="2026-10-23", summary="Round the declared decimal allocation ratio with exact integer arithmetic.", numeric_impact='At first-arm N=100 and ratio=1.1, the second arm is now 110 rather than 111. Required N and achieved power can change at exact decimal allocation boundaries; minimum arm sizes are unchanged.'),
+    MethodChange(method_id="noninferiority_t", version="1.1.0", date="2026-10-23", summary="Round the declared decimal allocation ratio with exact integer arithmetic.", numeric_impact='At first-arm N=100 and ratio=1.1, the second arm is now 110 rather than 111. Required N and achieved power can change at exact decimal allocation boundaries; minimum arm sizes are unchanged.'),
+    MethodChange(method_id="rope_equivalence_t", version="1.1.0", date="2026-10-23", summary="Round the declared decimal allocation ratio with exact integer arithmetic.", numeric_impact='At first-arm N=100 and ratio=1.1, the second arm is now 110 rather than 111. Required N and achieved power can change at exact decimal allocation boundaries; minimum arm sizes are unchanged.'),
     MethodChange(method_id="logrank_two_arm",version="1.4.0",date="2026-10-22",summary="Search all smaller totals under rounded allocation; local power need not be monotone.",numeric_impact="With HR=10, control hazard=.01, follow-up=.5, nominal allocation ratio=.01 and target=.06627943457127596, the local walk returned N=455 although N=4 meets target under the declared two-per-arm clamp. Search is now globally minimal within that explicit rule and remains bounded by the common budget."),
     MethodChange(method_id="welch_t", version="1.1.0", date="2026-10-22", summary="Use reflected, finite-checked noncentral-t tails.", numeric_impact='At n1=n2=3, raw difference=10 and both SDs=1, the old two-sided tail returned NaN. Reflected survival probabilities retain the finite result and prevent NaN from skipping a qualifying required-N candidate.'),
     MethodChange(method_id="paired_t", version="1.1.0", date="2026-10-22", summary="Use reflected, finite-checked noncentral-t tails.", numeric_impact='At n=2 and dz=6, alpha=.05, the old two-sided power returned NaN and could terminate required-N search prematurely. The reflected tail is finite; sample sizes are searched only with finite probabilities.'),

@@ -6,6 +6,7 @@ from math import ceil, isfinite
 
 from scipy.stats import binom, binomtest, chi2, f, ncf, nct, ncx2, norm, t
 
+from .allocation import allocated_arm_count, declared_allocation_ratio
 from .schema import Scenario
 from .search import check_search_budget, search_budget
 
@@ -33,13 +34,13 @@ def two_sample_t_power(n1: int, n2: int, d: float, alpha: float, alternative: st
 
 
 def required_n_two_sample_t(s: Scenario) -> dict[str, float | int | str]:
-    d, ratio, alpha = float(s.effect["cohens_d"]), float(s.design.get("allocation_ratio", 1.0)), s.decision_rule.alpha
+    d, ratio, alpha = float(s.effect["cohens_d"]), declared_allocation_ratio(s.design), s.decision_rule.alpha
     target, alternative = float(s.target_power), s.decision_rule.alternative
 
     # Bracketing by growth avoids evaluating the noncentral t CDF at enormous
     # degrees of freedom, where some numerical backends return NaN.
     lower, upper = 1, 2
-    while two_sample_t_power(upper, max(2, ceil(upper * ratio)), d, alpha, alternative) < target:
+    while two_sample_t_power(upper, allocated_arm_count(upper, ratio, minimum=2), d, alpha, alternative) < target:
         check_search_budget()
         lower, upper = upper, upper * 2
         if upper > 10_000_000:
@@ -47,16 +48,16 @@ def required_n_two_sample_t(s: Scenario) -> dict[str, float | int | str]:
     while lower + 1 < upper:
         check_search_budget()
         midpoint = (lower + upper) // 2
-        if two_sample_t_power(midpoint, max(2, ceil(midpoint * ratio)), d, alpha, alternative) >= target:
+        if two_sample_t_power(midpoint, allocated_arm_count(midpoint, ratio, minimum=2), d, alpha, alternative) >= target:
             upper = midpoint
         else:
             lower = midpoint
     n1 = upper
-    n2 = max(2, ceil(n1 * ratio))
+    n2 = allocated_arm_count(n1, ratio, minimum=2)
     while two_sample_t_power(n1, n2, d, alpha, alternative) < target:
         check_search_budget()
         n1 += 1
-        n2 = max(2, ceil(n1 * ratio))
+        n2 = allocated_arm_count(n1, ratio, minimum=2)
     return {"n1": n1, "n2": n2, "n_total": n1 + n2, "power": two_sample_t_power(n1, n2, d, alpha, alternative), "method": "noncentral_t"}
 
 
@@ -77,12 +78,12 @@ def welch_t_power(n1: int, n2: int, mean_difference: float, sd_group1: float, sd
 def required_n_welch_t(s: Scenario) -> dict[str, float | int | str]:
     difference = float(s.effect["mean_difference"])
     sd1, sd2 = float(s.effect["sd_group1"]), float(s.effect["sd_group2"])
-    ratio, alpha = float(s.design.get("allocation_ratio", 1.0)), s.decision_rule.alpha
+    ratio, alpha = declared_allocation_ratio(s.design), s.decision_rule.alpha
     target, alternative = float(s.target_power), s.decision_rule.alternative
     n1 = 2
     while True:
         check_search_budget()
-        n2 = max(2, ceil(n1 * ratio))
+        n2 = allocated_arm_count(n1, ratio, minimum=2)
         power = welch_t_power(n1, n2, difference, sd1, sd2, alpha, alternative)
         if power >= target:
             return {
@@ -144,11 +145,11 @@ def two_sample_proportion_power(n1: int, n2: int, p1: float, p2: float, alpha: f
 
 def required_n_two_sample_proportion(s: Scenario) -> dict[str, float | int | str]:
     p1, p2 = float(s.effect["p_group1"]), float(s.effect["p_group2"])
-    ratio, alpha, target, alternative = float(s.design.get("allocation_ratio", 1.0)), s.decision_rule.alpha, float(s.target_power), s.decision_rule.alternative
+    ratio, alpha, target, alternative = declared_allocation_ratio(s.design), s.decision_rule.alpha, float(s.target_power), s.decision_rule.alternative
     n1 = 2
     while True:
         check_search_budget()
-        n2 = max(2, ceil(n1 * ratio))
+        n2 = allocated_arm_count(n1, ratio, minimum=2)
         power = two_sample_proportion_power(n1, n2, p1, p2, alpha, alternative)
         if power >= target:
             return {"n1": n1, "n2": n2, "n_total": n1 + n2, "power": power, "method": "pooled_two_proportion_z_normal_approximation"}
@@ -550,12 +551,12 @@ def tost_equivalence_power(n1: int, n2: int, true_difference: float, sd: float, 
 def required_n_tost_equivalence(s: Scenario) -> dict[str, float | int | str]:
     lower, upper = float(s.effect["lower_bound"]), float(s.effect["upper_bound"])
     true_diff = float(s.effect.get("true_difference", 0.0))
-    sd, ratio = float(s.effect["sd"]), float(s.design.get("allocation_ratio", 1.0))
+    sd, ratio = float(s.effect["sd"]), declared_allocation_ratio(s.design)
     alpha, target = s.decision_rule.alpha, float(s.target_power)
     n1 = 4
     while True:
         check_search_budget()
-        n2 = max(4, ceil(n1 * ratio))
+        n2 = allocated_arm_count(n1, ratio, minimum=4)
         power = tost_equivalence_power(n1, n2, true_diff, sd, lower, upper, alpha)
         if power >= target:
             return {

@@ -73,10 +73,10 @@ def labeled_numbers(name: str, quote: str | None) -> list[float]:
     label=_NUMBER_LABELS.get(name)
     if not label or not isinstance(quote,str):return []
     text=quote.replace('−','-')
-    if name=='alpha' and re.search(r'cronbach|coefficient\s+alpha|reliability',text,re.IGNORECASE):return []
     pattern=r'(?<!\w)(?:'+label+r')(?!\w)\s*(?:(?:was|is|of|at|rate|level|set|to|equal|equals)\s*|[=:]){0,4}\s*'+_NUMBER_LITERAL+r'\s*(%|percent\b)?(?!\w|\.\d)'
     values=[]
     for match in re.finditer(pattern,text,re.IGNORECASE):
+        if name=='alpha' and re.search(r"(?:cronbach(?:[’']s)?|coefficient|reliability)\s*$",text[max(0,match.start()-40):match.start()],re.IGNORECASE):continue
         # Reject a numeric prefix of an unevaluated expression or range.
         if re.match(r'\s*[/*+−–—:]|\s*-(?=\s*[.\d])',text[match.end():]):continue
         if name=='target_power' and re.search(r'\b(?:observed|achieved|post[ -]?hoc)\s*$',text[max(0,match.start()-25):match.start()],re.IGNORECASE):continue
@@ -165,12 +165,13 @@ def _rewrite_design_matches(paragraph: str, confirmed: dict) -> bool:
         if re.search(r"\balternative\s*=\s*" + opposite + r"\b", paragraph, re.IGNORECASE):
             return False
     count_roles = (
+        (r"\b(?:total\s+(?:sample(?:\s+size)?|N)|N)\s*(?:[=:]|was|is|of)\s*", result.get("n_total")),
         (r"\banalysable sample(?:\s+size)?\s+(?:of|was|is)\s*", result.get("n_total")),
         (r"\brecruitment target\s+(?:of|was|is)\s*", None),
     )
     for index, (label, expected) in enumerate(count_roles):
         canonical_values = [float(match.group(1)) for match in re.finditer(label + "(" + NUMBER + ")", canonical, re.IGNORECASE)]
-        allowed = [expected] if index == 0 and _finite_number(expected) else canonical_values
+        allowed = [expected] if _finite_number(expected) else canonical_values
         for match in re.finditer(label + "(" + NUMBER + ")", paragraph, re.IGNORECASE):
             if allowed and not any(isclose(float(match.group(1)), value, rel_tol=1e-10, abs_tol=1e-12) for value in allowed):
                 return False
@@ -192,7 +193,7 @@ def _rewrite_design_matches(paragraph: str, confirmed: dict) -> bool:
     common = result.get("n_per_group")
     if "n1" in result and result.get("n1") == result.get("n2"):
         common = result["n1"]
-    pattern = "(" + NUMBER + r")\s*(?:(?:observations|participants|subjects)\s*)?(?:per[ -]group|in each group)\b"
+    pattern = "(" + NUMBER + r")\s*(?:(?:observations|participants|subjects)\s*)?(?:per[ -](?:group|arm)|in each (?:group|arm))\b"
     for match in re.finditer(pattern, paragraph, re.IGNORECASE):
         value = float(match.group(1))
         if common is None or not _finite_number(value) or not isclose(value, common, rel_tol=1e-10, abs_tol=1e-12):

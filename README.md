@@ -6,17 +6,19 @@ published. See [portable API and integration guide](docs/portable-api.md).
 
 **Statistical power analysis that shows its work.**
 
-PowerBench computes required sample sizes for 27 study designs. What distinguishes it is
-not the calculations — those are standard — but that every number is checked three ways and
-the checks are published:
+PowerBench computes required sample sizes for 27 study designs and exposes the
+assumptions, implementation and available validation evidence. Its checking paths are:
 
 1. an **analytic reference** implementing a named published formula,
 2. an **independent Monte Carlo simulation** that shares no code with the reference,
 3. **external tools** (R `pwr`, `pwrss`, `metafor`, `TOSTER`, `MASS`) where they can
    represent the same design.
 
-When those disagree, PowerBench says so and explains why, rather than presenting one
-confident number.
+Checks apply where implemented and where their assumptions match. Analytic-only
+requests do not automatically run Monte Carlo or external software; execution metadata
+states which checks ran. Published validation scenarios, approximation limits and
+disagreements must be read alongside each method. A calculation or successful replay
+does not certify a study design.
 
 This package is the calculation engine behind [PowerMate](https://powerrmate.vercel.app).
 It is published separately so the mathematics can be audited, cited, and reported against
