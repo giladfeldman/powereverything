@@ -80,3 +80,21 @@ def test_plan_report_tool_line_compares_sample_sizes():
     assert "matches" in _report_line({"status": "ok", "adapter": "r.pwr", "result": {"n_total": 328}})
     assert "not compared" in _report_line({"status": "unsupported", "reason": "x"})
     assert "ok" != _report_line({"status": "ok", "adapter": "r.pwr", "result": {}}).split(":** ")[1]
+
+
+def test_assumption_sensitivity_is_public_and_matches_native_plan():
+    """The browser planner has no make_plan; it needs the same curve through a public call."""
+    from powerbench.planning import assumption_sensitivity
+    fields = {"model": "two_sample_t", "effect": 0.4, "alpha": 0.05, "target_power": 0.95, "allocation_ratio": 1}
+    native = make_plan(fields)
+    browser = assumption_sensitivity(fields)
+    assert browser["sensitivity"] == native["sensitivity"]
+    assert browser["heterogeneity_sensitivity"] == native["heterogeneity_sensitivity"]
+    assert browser["sensitivity_policy_version"] == native["sensitivity_policy_version"]
+    assert [row["multiplier"] for row in browser["sensitivity"]] == [0.5, 0.75, 1.0, 1.25, 1.5]
+
+
+def test_assumption_sensitivity_refuses_fixed_sample_goals():
+    from powerbench.planning import assumption_sensitivity
+    with pytest.raises(ValueError):
+        assumption_sensitivity({"model": "two_sample_t", "effect": 0.4, "alpha": 0.05, "goal": "achieved_power", "n1": 50, "n2": 50})

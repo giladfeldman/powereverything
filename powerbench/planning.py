@@ -591,7 +591,7 @@ def make_plan(payload: dict[str, Any]) -> dict[str, Any]:
         "primary_tests": primary_tests,
         "sensitivity": _sensitivity_curve(scenario, reference),
         "heterogeneity_sensitivity": _heterogeneity_curve(scenario),
-        "sensitivity_policy_version": "1.1", "planning_policy_version": "1.3",
+        "sensitivity_policy_version": SENSITIVITY_POLICY_VERSION, "planning_policy_version": "1.3",
         "caution": "This is a matched calculation under the displayed assumptions. It is not a declaration that the overall study plan is correct.",
     }
     from .provenance import provenance
@@ -607,6 +607,24 @@ def make_plan(payload: dict[str, Any]) -> dict[str, Any]:
     result["citations"] = [method_attribution(model)]
     return result
 
+
+
+SENSITIVITY_POLICY_VERSION = "1.1"
+
+
+def assumption_sensitivity(payload: dict[str, Any]) -> dict[str, Any]:
+    """Required-N curves around the stated effect (and tau), without simulation or tool calls.
+
+    Uses the same rows as ``make_plan`` so the browser planner can show them.
+    """
+    if payload.get("goal", "required_sample_size") != "required_sample_size" or any(payload.get(key) not in (None, "") for key in ("n1", "n2", "n_total")):
+        raise ValueError("Assumption sensitivity requires a required-sample-size goal without fixed sample counts")
+    scenario, *_ = scenario_from_fields(payload)
+    return {
+        "sensitivity": _sensitivity_curve(scenario, {}),
+        "heterogeneity_sensitivity": _heterogeneity_curve(scenario),
+        "sensitivity_policy_version": SENSITIVITY_POLICY_VERSION,
+    }
 
 
 def analyze_fields(payload: dict[str, Any]) -> dict[str, Any]:
