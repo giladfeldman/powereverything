@@ -12,6 +12,11 @@ version and only when a method's answers change. See
 
 ## 0.9.0 — release candidate, not yet published
 
+- pwrss adapter works with pwrss 1.3.x (2026-10-24): pwrss >= 1.3 refuses kappa = n1/n2
+  below 1 ("Design is not feasible"), so for an allocation ratio above 1 the adapter now
+  solves with the (SD, n) pairs swapped and swaps the sizes back. Answers are unchanged:
+  the adapter tests pass identically on pwrss 1.0.0 and 1.3.3 (d=.3, ratio 1.5, power .9
+  gives 196 + 294). PowerBench's own numbers are not affected.
 - Exact decimal allocation (2026-10-23): declared decimal ratios and integer pairs are
   rounded with exact half-up integer arithmetic instead of floating ceil/round. At
   first-arm N=100 and ratio 1.1 the second arm is now 110, not 111; for d=.4,

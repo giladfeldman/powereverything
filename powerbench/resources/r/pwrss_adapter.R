@@ -29,6 +29,22 @@ alternative <- scenario$decision_rule$alternative
 pwrss_alternative <- if (identical(alternative, "two.sided")) "not equal" else "greater"
 version <- as.character(utils::packageVersion("pwrss"))
 
+# pwrss >= 1.3 stops with "Design is not feasible" whenever kappa = n1/n2 < 1, which
+# 1.0.0 accepted. The test statistic depends on the groups only through the pairs
+# (sd1, n1) and (sd2, n2) -- the mean difference keeps its sign -- so solve with the
+# pairs swapped (kappa > 1, SDs swapped) and swap the sizes back.
+two_means <- function(mu1, sd1, sd2, kappa, power, alpha, alternative, margin = 0) {
+  swap <- kappa < 1
+  answer <- pwrss::pwrss.t.2means(
+    mu1 = mu1, mu2 = 0,
+    sd1 = if (swap) sd2 else sd1, sd2 = if (swap) sd1 else sd2,
+    kappa = if (swap) 1 / kappa else kappa, margin = margin,
+    power = power, alpha = alpha, alternative = alternative, verbose = FALSE
+  )
+  if (swap) answer$n <- rev(answer$n)
+  answer
+}
+
 # noninferiority_t is inherently one-sided (the scenario declares alternative
 # "greater"); every other branch is restricted to two.sided.
 if (!identical(alternative, "two.sided") && !identical(scenario$model, "noninferiority_t")) {
@@ -104,11 +120,7 @@ if (scenario$model == "logistic_regression") {
   # the exact pooled noncentral t for every committed scenario; the df convention is
   # declared on the Python side so any residual gap is attributed, not hidden.
   ratio <- if (is.null(scenario$design$allocation_ratio)) 1 else scenario$design$allocation_ratio
-  answer <- pwrss::pwrss.t.2means(
-    mu1 = scenario$effect$cohens_d, mu2 = 0, sd1 = 1, sd2 = 1,
-    kappa = 1 / ratio, power = power, alpha = alpha,
-    alternative = pwrss_alternative, verbose = FALSE
-  )
+  answer <- two_means(scenario$effect$cohens_d, 1, 1, 1 / ratio, power, alpha, pwrss_alternative)
   n1 <- as.integer(answer$n[[1]]); n2 <- as.integer(answer$n[[2]])
   result <- list(
     package = "pwrss",
@@ -126,12 +138,8 @@ if (scenario$model == "logistic_regression") {
   )
 } else if (scenario$model == "welch_t") {
   ratio <- if (is.null(scenario$design$allocation_ratio)) 1 else scenario$design$allocation_ratio
-  answer <- pwrss::pwrss.t.2means(
-    mu1 = scenario$effect$mean_difference, mu2 = 0,
-    sd1 = scenario$effect$sd_group1, sd2 = scenario$effect$sd_group2,
-    kappa = 1 / ratio, power = power, alpha = alpha,
-    alternative = pwrss_alternative, verbose = FALSE
-  )
+  answer <- two_means(scenario$effect$mean_difference, scenario$effect$sd_group1,
+                      scenario$effect$sd_group2, 1 / ratio, power, alpha, pwrss_alternative)
   n1 <- as.integer(answer$n[[1]]); n2 <- as.integer(answer$n[[2]])
   result <- list(
     package = "pwrss",
@@ -154,13 +162,8 @@ if (scenario$model == "logistic_regression") {
   # would return balanced arms for an unbalanced design. Verified at ratio = 1.5:
   # both tools return 42/63 = 105.
   ratio <- if (is.null(scenario$design$allocation_ratio)) 1 else scenario$design$allocation_ratio
-  answer <- pwrss::pwrss.t.2means(
-    mu1 = scenario$effect$true_difference, mu2 = 0,
-    sd1 = scenario$effect$sd, sd2 = scenario$effect$sd,
-    kappa = 1 / ratio,
-    margin = -scenario$effect$margin, power = power, alpha = alpha,
-    alternative = "non-inferior", verbose = FALSE
-  )
+  answer <- two_means(scenario$effect$true_difference, scenario$effect$sd, scenario$effect$sd,
+                      1 / ratio, power, alpha, "non-inferior", margin = -scenario$effect$margin)
   n1 <- as.integer(answer$n[[1]]); n2 <- as.integer(answer$n[[2]])
   result <- list(
     package = "pwrss",
