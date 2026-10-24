@@ -94,7 +94,7 @@ print(reference["n_total"], reference["method"])
 
 check = simulate(scenario, n1=reference["n1"], n2=reference["n2"])
 print(check["power"], check["mc_ci95"])
-# 0.8092 (0.7983, 0.8201)   <- independent confirmation, not the same code path
+# 0.8092 (0.7981, 0.8199)   <- independent confirmation, not the same code path
 ```
 
 The second call is the point. If the analytic answer falls outside the simulation's Monte
