@@ -14,19 +14,19 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from powerbench.adapters.manual_gpower import (  # noqa: E402
+from powerbench.adapters.manual_gpower import (
     CAPTURE_DIR,
     REQUIRED_FIELDS,
     capture_signature,
     scenario_hash,
 )
-from powerbench.schema import load_scenario  # noqa: E402
+from powerbench.schema import load_scenario
 
 SCENARIO_DIR = REPO_ROOT / "data" / "scenarios"
 

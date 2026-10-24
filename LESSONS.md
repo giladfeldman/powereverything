@@ -63,3 +63,7 @@ Floating `ceil(100 * 1.1)` is 111 and banker's rounding split 67 at ratio .072 a
 ## 2026-10-23 - Disclose substituted inputs where the reader will look, and keep the disclosure when sharing
 
 A takeover cross-model review found the field parser silently filled log-rank follow-up/hazards (changing N) and target power .95 / attrition 0. The disclosure is now a structured assumption line checked against the scenario value, so it cannot be forged or go stale, and shared snapshots keep exactly those lines. A string-presence test of planner.js stayed green while the browser planner had lost its sensitivity table; a test that submits every method's own example values found two pages whose default example never computed.
+
+## 2026-10-24 - Release metadata drifts silently: sync CITATION.cff with the package version
+
+CITATION.cff still said 0.8.2 / 2026-09-27 while the package, CHANGELOG and docs were 0.9.0, and the README's `__version__` example was stale. No test compared them. Cleanup now greps every version-bearing file (pyproject, `__init__`, CITATION.cff, README, CHANGELOG) before a release; scripts/ had also drifted from the ruff baseline (unused imports, dead `noqa`), fixed by `ruff --fix`.
