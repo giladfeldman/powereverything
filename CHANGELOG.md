@@ -10,6 +10,21 @@ version and only when a method's answers change. See
 
 ---
 
+## 0.9.2 — 2026-10-31
+
+Code-review prompt only (prompt version 2026-10-31.1). No computed power, sample size or
+effect changes; no method version moves; the validator is unchanged. Found by re-running the
+cheapest-model pretest (Claude Haiku, Codex gpt-6-luna) on 0.9.1; each repair has a test
+observed failing on 0.9.1 (`tests/test_model_pretest_20261030.py`).
+
+- Code prompt: a per_group_vs_total finding must quote the reported total N line and the
+  function call together. The validator has always required both in one quote. Haiku quoted
+  only the comment and Luna only the call, so a correct finding was rejected on all 12 such
+  tasks across the two models.
+- Code prompt: unequal allocation alone is not a finding (return n_per_group null);
+  unsupported_or_ambiguous_code is for a call that is not a recognised power function. Both
+  models had flagged a readable ratio=2 call as ambiguous on all 12 such tasks.
+
 ## 0.9.1 — 2026-10-30
 
 Review-assistance contract only (prompt version 2026-10-30.1). No computed power, sample size

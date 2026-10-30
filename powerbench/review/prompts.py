@@ -7,7 +7,7 @@ from math import isclose
 
 from .evidence import _finite_number, anchored_number, lexical_support, numeric_tokens
 
-PROMPT_VERSION = "2026-10-30.1"
+PROMPT_VERSION = "2026-10-31.1"
 FIELDS = ("model", "kind", "effect", "effect_metric", "alpha", "alternative", "target_power", "reported_n", "n_unit", "allocation_ratio", "attrition_rate", "software", "groups", "predictors", "total_predictors", "tested_predictors", "studies", "tau", "looks", "categories", "sd_group1", "sd_group2", "multiplicity_method", "family_alpha", "primary_tests")
 
 

@@ -157,3 +157,26 @@ def test_et_al_at_a_real_sentence_end_still_ends_the_sentence():
 def test_hyphenated_or_wrapped_sample_size_is_not_an_effect_subject():
     for text in ("Based on Smith (2019), the sample-size was 200.", "Based on Smith (2019), the sample\nsize was 200."):
         assert finding_supported("missing_effect_rationale", text[:30], text), text
+
+
+# Re-pretest on 0.9.1 (Codex gpt-6-luna, code family): a correct per_group_vs_total finding
+# quoting only the call was rejected (the validator needs the reported-total line in the same
+# quote), and unequal allocation drew unsupported_or_ambiguous_code on a readable call. The
+# prompt never said either. Each observed failing on 0.9.1.
+_PER_GROUP_SOURCE = ('# Manuscript reports total N = 178\n'
+                     'result <- pwr::pwr.t.test(n=178, d=0.2, sig.level=0.01, type="two.sample", alternative="two.sided")')
+
+
+def test_code_prompt_says_to_quote_the_reported_total_with_the_call():
+    instructions = _instructions("code", _PER_GROUP_SOURCE)
+    assert "per_group_vs_total" in instructions and "reported total N line and the function call" in instructions
+
+
+def test_the_quote_the_prompt_asks_for_is_one_the_validator_accepts():
+    assert finding_supported("per_group_vs_total", _PER_GROUP_SOURCE, _PER_GROUP_SOURCE)
+    assert not finding_supported("per_group_vs_total", _PER_GROUP_SOURCE.splitlines()[1], _PER_GROUP_SOURCE)
+
+
+def test_code_prompt_says_unequal_allocation_is_not_a_finding():
+    instructions = _instructions("code", "TTestIndPower().power(effect_size=0.5, nobs1=224, alpha=0.01, ratio=2)")
+    assert "Unequal allocation alone is not a finding" in instructions

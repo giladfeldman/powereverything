@@ -1,6 +1,6 @@
 # PowerBench
 
-**0.9.1** (on PyPI) adds portable goal-specific APIs, executable reproduction
+**0.9.2** (on PyPI) adds portable goal-specific APIs, executable reproduction
 bundles, fixed-sample sensitivity and reusable review/reporting. See
 [portable API and integration guide](docs/portable-api.md).
 
@@ -161,7 +161,7 @@ quick start above:
 | `MethodChange` | One dated, numerically-described correction to a method's formula |
 | `METHOD_CHANGELOG` | The full, append-only history of `MethodChange` entries across all methods |
 | `METHOD_VERSION` / `METHOD_VERSIONS` | The current version constant/mapping backing `method_version` |
-| `__version__` | The installed package release, e.g. `"0.9.1"` |
+| `__version__` | The installed package release, e.g. `"0.9.2"` |
 
 ---
 
