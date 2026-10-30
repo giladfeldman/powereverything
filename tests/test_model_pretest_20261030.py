@@ -180,3 +180,9 @@ def test_the_quote_the_prompt_asks_for_is_one_the_validator_accepts():
 def test_code_prompt_says_unequal_allocation_is_not_a_finding():
     instructions = _instructions("code", "TTestIndPower().power(effect_size=0.5, nobs1=224, alpha=0.01, ratio=2)")
     assert "Unequal allocation alone is not a finding" in instructions
+
+
+def test_code_prompt_defines_per_group_vs_total_as_a_mismatch():
+    # 0.9.2 source pretest: told what to quote, both models then raised per_group_vs_total on
+    # consistent totals ("total N of 86 equals 2 x 43"). The prompt never defined the code.
+    assert "A total N that matches is not a finding" in _instructions("code", _PER_GROUP_SOURCE)
