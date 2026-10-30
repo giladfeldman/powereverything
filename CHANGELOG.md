@@ -10,7 +10,34 @@ version and only when a method's answers change. See
 
 ---
 
-## 0.9.0 — release candidate, not yet published
+## 0.9.1 — 2026-10-30
+
+Review-assistance contract only (prompt version 2026-10-30.1). No computed power, sample size
+or effect changes; no method version moves. Found by a cheapest-model pretest (Claude Haiku,
+Codex gpt-6-luna) on synthetic power-review tasks; each repair has a test observed failing on
+0.9.0 (`tests/test_model_pretest_20261030.py`).
+
+- Rewrite: a faithful "calculated power 0.8538" is no longer read as target power. The
+  validator rejected such rewrites as "changed a labeled scientific quantity". Only the bare
+  "power" label is skipped after calculated/computed/actual/resulting/estimated; "estimated
+  target power of 0.8" is still a target.
+- Rewrite prompt now states the rule the validator already enforced: keep "planning
+  assumption" (or hypothetical/assumed effect) wording from the canonical paragraph.
+- Code prompt names every goal label (achieved_power, required_sample_size, sensitivity);
+  required_sample_size was expected but never named.
+- Code prompt: simulation-based power code returns every field null and reports findings
+  only, which is what the validator and gold already expected.
+- Audit prompt says what to quote for an absent item (the sentence that should have
+  reported it); missing-item findings were otherwise never returned.
+- Audit: a named smallest effect of interest without a stated basis now supports
+  missing_effect_rationale (owner ruling 2026-10-30). Before, the bare phrase suppressed the
+  finding. A rationale now counts only in a sentence that names a basis (prior/earlier
+  studies or evidence, the literature, a pilot, a meta-analysis, cost-benefit, clinical
+  importance, a citation), refers to the effect, and does not deny one ("not cited"). Bare
+  "based on"/"derived from" no longer count: "based on a two-sided test" is not a rationale.
+- Each repair was checked by a second model (Sonnet), whose counter-examples are tests.
+
+## 0.9.0 — published to PyPI 2026-10-24
 
 - pwrss adapter works with pwrss 1.3.x (2026-10-24): pwrss >= 1.3 refuses kappa = n1/n2
   below 1 ("Design is not feasible"), so for an allocation ratio above 1 the adapter now

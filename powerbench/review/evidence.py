@@ -80,6 +80,10 @@ def labeled_numbers(name: str, quote: str | None) -> list[float]:
         # Reject a numeric prefix of an unevaluated expression or range.
         if re.match(r'\s*[/*+−–—:]|\s*-(?=\s*[.\d])',text[match.end():]):continue
         if name=='target_power' and re.search(r'\b(?:observed|achieved|post[ -]?hoc)\s*$',text[max(0,match.start()-25):match.start()],re.IGNORECASE):continue
+        # A calculated power is a result, not the target (2026-10-30 pretest: a faithful
+        # "calculated power 0.8538" was read as target power). Only for the bare label: a
+        # qualified "estimated target power of 0.8" still states the target.
+        if name=='target_power' and match.group(0).lower().startswith('power') and re.search(r'\b(?:calculated|computed|actual|resulting|estimated)\s*$',text[max(0,match.start()-25):match.start()],re.IGNORECASE):continue
         values.append(float(match.group(1))/(100 if match.group(2) else 1))
     return values
 
@@ -98,6 +102,30 @@ def code_support(name: str, value: object, quote: str | None) -> bool:
     return isinstance(value,str) and value==expected
 
 
+# A sentence states an effect rationale when it names a basis, refers to the effect, and does not
+# deny one. Bare "based on"/"derived from" are not cues: nearly every power paragraph says
+# "based on a two-sided test" (cross-model review, 2026-10-30).
+_RATIONALE_CUE=re.compile(
+    r'effect rationale|\b(?:prior|previous|earlier|published|existing)\s+(?:evidence|research|stud(?:y|ies)|work|findings|literature|trials?)\b|'
+    r'\boriginal stud(?:y|ies)\b|\bthe literature\b|\bpilot (?:stud(?:y|ies)|data|evidence|results|estimates?)\b|\bfrom a pilot\b|meta[ -]?analy|'
+    r'\bon the basis of\b|\bbased on (?:an? |the )?(?:cost|pilot|prior|previous|earlier|published|meta|literature|evidence|clinical|theor)|'
+    r'cost[ -]benefit|\bcosts? (?:would )?(?:outweigh|exceed)|clinically (?:meaningful|important|relevant)|minimal(?:ly)? (?:clinically )?important|'
+    r'\bminimum difference\b|practical(?:ly)? (?:relevan|significan|meaningful)|\bsmaller effects? would\b|\bwe justif(?:y|ied)\b|\bjustified (?:by|as|on)\b',
+    re.IGNORECASE)
+_CITATION=re.compile(r'\b[A-Z][A-Za-z-]+(?: et al\.?)?,? \(?(?:19|20)\d{2}\)?')  # case-sensitive: "Smith (2019)"
+_RATIONALE_SUBJECT=re.compile(r'\b(?:effects?|sesoi|value|d|sizes?|difference|threshold|benchmark|this|it)\b',re.IGNORECASE)
+_RATIONALE_DENIED=re.compile(
+    r'\bnot (?:cited|defined|given|stated|reported|justified|provided|available|specified)\b|'
+    r'\bno (?:rationale|justification|basis|citation|reference)\b|\bwithout (?:an? )?(?:rationale|justification|basis|citation)\b',re.IGNORECASE)
+
+
+def _effect_rationale_given(text: str) -> bool:
+    for sentence in re.split(r'(?<=[.;!?])\s+',text):
+        if _RATIONALE_DENIED.search(sentence):continue
+        if (_RATIONALE_CUE.search(sentence) or _CITATION.search(sentence)) and _RATIONALE_SUBJECT.search(sentence):return True
+    return False
+
+
 def finding_supported(code: str, quote: str | None, text: str) -> bool:
     if not isinstance(quote,str) or len(re.findall(r"\w+",quote))<3:return False
     if code=='observed_effect_posthoc':
@@ -107,7 +135,10 @@ def finding_supported(code: str, quote: str | None, text: str) -> bool:
         return not labeled_numbers(field,text)
     if code=='missing_sidedness':return not re.search(r'\b(?:two[ -]sided|two[ -]tailed|one[ -]sided|one[ -]tailed|greater|less)\b',text,re.IGNORECASE)
     if code=='missing_allocation':return not (labeled_numbers('allocation_ratio',text) or re.search(r'\bequal\s+(?:allocation|between groups)|allocation was equal|balanced (?:groups|allocation)',text,re.IGNORECASE))
-    if code=='missing_effect_rationale':return not re.search(r'(?:effect rationale|smallest effect of interest|prior evidence|previous research)',text,re.IGNORECASE)
+    if code=='missing_effect_rationale':
+        # Naming a smallest effect of interest is not a rationale; its basis is (owner ruling
+        # 2026-10-30: an unjustified SESOI is a reporting gap).
+        return not _effect_rationale_given(text)
     if code=='per_group_vs_total':
         from .code_source import literal_power_call
         n=literal_power_call(quote).get('n_per_group')
