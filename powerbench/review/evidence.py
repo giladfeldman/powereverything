@@ -69,6 +69,15 @@ _NUMBER_LABELS={
 }
 
 
+# A sentence boundary that does not split "e.g.", "i.e." or "Smith et al. (2019)"; "et al." before
+# anything other than a year still ends the sentence (review + cross-model review, 2026-10-30).
+_SENTENCE_BREAK=re.compile(r'(?<!\bal\.)(?<!e\.g\.)(?<!i\.e\.)(?<=[.;!?])\s+|(?<=\bal\.)\s+(?!\(?(?:19|20)\d{2})')
+# Words straight after an "estimated power" number that name it the design target: "of 0.9 was
+# the design target". No comma or other number may intervene; "in the planned sample" describes a
+# computed result, so planned/intended alone never qualifies (review, 2026-10-30).
+_DESIGN_TARGET=re.compile(r'\s*(?:was|is|as)\s+(?:the|our)\s+(?:\w+\s+)?(?:target|goal|aim)\b',re.IGNORECASE)
+
+
 def labeled_numbers(name: str, quote: str | None) -> list[float]:
     label=_NUMBER_LABELS.get(name)
     if not label or not isinstance(quote,str):return []
@@ -82,8 +91,11 @@ def labeled_numbers(name: str, quote: str | None) -> list[float]:
         if name=='target_power' and re.search(r'\b(?:observed|achieved|post[ -]?hoc)\s*$',text[max(0,match.start()-25):match.start()],re.IGNORECASE):continue
         # A calculated power is a result, not the target (2026-10-30 pretest: a faithful
         # "calculated power 0.8538" was read as target power). Only for the bare label: a
-        # qualified "estimated target power of 0.8" still states the target.
-        if name=='target_power' and match.group(0).lower().startswith('power') and re.search(r'\b(?:calculated|computed|actual|resulting|estimated)\s*$',text[max(0,match.start()-25):match.start()],re.IGNORECASE):continue
+        # qualified "estimated target power of 0.8" still states the target, and so does an
+        # "estimated power" whose sentence names it the design target (review, 2026-10-30).
+        if name=='target_power' and match.group(0).lower().startswith('power'):
+            qualifier=re.search(r'\b(calculated|computed|actual|resulting|estimated)\s*$',text[max(0,match.start()-25):match.start()],re.IGNORECASE)
+            if qualifier and not (qualifier.group(1).lower()=='estimated' and _DESIGN_TARGET.match(text,match.end())):continue
         values.append(float(match.group(1))/(100 if match.group(2) else 1))
     return values
 
@@ -113,14 +125,15 @@ _RATIONALE_CUE=re.compile(
     r'\bminimum difference\b|practical(?:ly)? (?:relevan|significan|meaningful)|\bsmaller effects? would\b|\bwe justif(?:y|ied)\b|\bjustified (?:by|as|on)\b',
     re.IGNORECASE)
 _CITATION=re.compile(r'\b[A-Z][A-Za-z-]+(?: et al\.?)?,? \(?(?:19|20)\d{2}\)?')  # case-sensitive: "Smith (2019)"
-_RATIONALE_SUBJECT=re.compile(r'\b(?:effects?|sesoi|value|d|sizes?|difference|threshold|benchmark|this|it)\b',re.IGNORECASE)
+# "sample size" is not the effect: a basis for N is not an effect rationale.
+_RATIONALE_SUBJECT=re.compile(r'\b(?:effects?|sesoi|value|d|(?<!sample[\s-])sizes?|difference|threshold|benchmark|this|it)\b',re.IGNORECASE)
 _RATIONALE_DENIED=re.compile(
     r'\bnot (?:cited|defined|given|stated|reported|justified|provided|available|specified)\b|'
     r'\bno (?:rationale|justification|basis|citation|reference)\b|\bwithout (?:an? )?(?:rationale|justification|basis|citation)\b',re.IGNORECASE)
 
 
 def _effect_rationale_given(text: str) -> bool:
-    for sentence in re.split(r'(?<=[.;!?])\s+',text):
+    for sentence in _SENTENCE_BREAK.split(text):
         if _RATIONALE_DENIED.search(sentence):continue
         if (_RATIONALE_CUE.search(sentence) or _CITATION.search(sentence)) and _RATIONALE_SUBJECT.search(sentence):return True
     return False

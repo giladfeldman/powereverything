@@ -122,3 +122,38 @@ def test_rewrite_prompt_does_not_forbid_the_canonical_target_effect_wording():
 
 def test_code_prompt_says_what_to_quote_for_a_missing_seed():
     assert "quote the simulation line" in _instructions("code", "replicate(500, mean(rnorm(10)))")
+
+
+# powerbench-review 2026-10-30 (ship of 0.9.1): three validator edge cases, each observed failing first.
+def test_an_et_al_citation_is_a_basis():
+    text = "Smith et al. (2019) reported d = 0.4, which we used as the effect."
+    assert not finding_supported("missing_effect_rationale", text[:30], text)
+
+
+def test_estimated_power_named_as_the_design_target_is_a_target():
+    assert labeled_numbers("target_power", "Estimated power of 0.9 was the design target.") == [0.9]
+    assert labeled_numbers("target_power", "The estimated power was 0.80 for the planned test.") == []
+    assert labeled_numbers("target_power", "Estimated power 0.93 in the planned sample.") == []
+    assert labeled_numbers("target_power", "The estimated power was 0.62 given the final sample.") == []
+
+
+def test_a_basis_for_the_sample_size_is_not_an_effect_rationale():
+    text = "The sample size was based on prior research on attrition; the SESOI was d=0.3."
+    assert finding_supported("missing_effect_rationale", text[:30], text)
+
+
+# Cross-model (Sonnet) counter-examples to the three fixes above, each observed failing first.
+def test_estimated_power_needs_the_target_wording_attached_to_its_own_number():
+    assert labeled_numbers("target_power", "Estimated power was 0.62, below the planned 0.80.") == []
+    assert labeled_numbers("target_power", "A between-subjects design had an estimated power of 0.45.") == []
+    assert labeled_numbers("target_power", "Estimated power was 0.62 for the target effect of d = 0.4.") == []
+
+
+def test_et_al_at_a_real_sentence_end_still_ends_the_sentence():
+    text = "No rationale was given in Smith et al. We justified d = 0.3 by Lee (2020)."
+    assert not finding_supported("missing_effect_rationale", text[:30], text)
+
+
+def test_hyphenated_or_wrapped_sample_size_is_not_an_effect_subject():
+    for text in ("Based on Smith (2019), the sample-size was 200.", "Based on Smith (2019), the sample\nsize was 200."):
+        assert finding_supported("missing_effect_rationale", text[:30], text), text

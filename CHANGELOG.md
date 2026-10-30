@@ -20,7 +20,9 @@ Codex gpt-6-luna) on synthetic power-review tasks; each repair has a test observ
 - Rewrite: a faithful "calculated power 0.8538" is no longer read as target power. The
   validator rejected such rewrites as "changed a labeled scientific quantity". Only the bare
   "power" label is skipped after calculated/computed/actual/resulting/estimated; "estimated
-  target power of 0.8" is still a target.
+  target power of 0.8" is still a target, and so is an "estimated power" number followed
+  directly by its target wording ("of 0.9 was the design target"). Known limit: "estimated power of 0.9 is what the study targets" is not read as a
+  target, so missing_target_power can still be over-flagged there.
 - Rewrite prompt now states the rule the validator already enforced: keep "planning
   assumption" (or hypothetical/assumed effect) wording from the canonical paragraph.
 - Code prompt names every goal label (achieved_power, required_sample_size, sensitivity);
@@ -35,6 +37,8 @@ Codex gpt-6-luna) on synthetic power-review tasks; each repair has a test observ
   studies or evidence, the literature, a pilot, a meta-analysis, cost-benefit, clinical
   importance, a citation), refers to the effect, and does not deny one ("not cited"). Bare
   "based on"/"derived from" no longer count: "based on a two-sided test" is not a rationale.
+  "Smith et al. (2019)" is one sentence, not two, and a basis for the sample size ("sample
+  size was based on prior research") is not a basis for the effect.
 - Each repair was checked by a second model (Sonnet), whose counter-examples are tests.
 
 ## 0.9.0 — published to PyPI 2026-10-24

@@ -67,3 +67,7 @@ A takeover cross-model review found the field parser silently filled log-rank fo
 ## 2026-10-24 - Release metadata drifts silently: sync CITATION.cff with the package version
 
 CITATION.cff still said 0.8.2 / 2026-09-27 while the package, CHANGELOG and docs were 0.9.0, and the README's `__version__` example was stale. No test compared them. Cleanup now greps every version-bearing file (pyproject, `__init__`, CITATION.cff, README, CHANGELOG) before a release; scripts/ had also drifted from the ruff baseline (unused imports, dead `noqa`), fixed by `ruff --fix`.
+
+## 2026-10-30 - A text validator needs counter-examples from both directions, run more than once
+
+The 0.9.1 review validator went through three rounds: the cheapest-model pretest found six defects, a cross-model review of the fixes found four more, the release review found three, and a second cross-model pass found five more in those fixes ("estimated power was 0.62, below the planned 0.80" read the planned 0.80's wording onto the 0.62; "et al." merged real sentence ends; "sample-size" slipped past a single-space lookbehind). Sentence-wide keyword tests are too loose for attribution: tie qualifying wording to the number it qualifies, and test every rule with both an accept and a reject example before shipping.

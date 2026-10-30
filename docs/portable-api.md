@@ -1,8 +1,8 @@
-# Portable scientific API (0.9.0 candidate)
+# Portable scientific API
 
-This candidate is not yet a published release. Build it with `python -m pip wheel .`
-and install that wheel into a clean environment. Production consumers must wait for
-publication of `powerbench==0.9.0` and verify its artifact hash. No PowerMate account,
+Install the published release with `python -m pip install powerbench` (or build from source
+with `python -m pip wheel .` and install that wheel into a clean environment), and verify the
+artifact hash before relying on it in production. No PowerMate account,
 database, web server, or AI service is required.
 
 ```python
