@@ -17,8 +17,9 @@ effect changes; no method version moves; the validator is unchanged. Found by re
 cheapest-model pretest (Claude Haiku, Codex gpt-6-luna) on 0.9.1; each repair has a test
 observed failing on 0.9.1 (`tests/test_model_pretest_20261030.py`).
 
-- Code prompt: per_group_vs_total is defined (the reported total N differs from per-group n
-  times the groups; a matching total is not a finding), and its finding must quote the reported total N line and the
+- Code prompt: per_group_vs_total is defined as the validator implements it (an equal-allocation
+  call whose per-group n times 2 differs from the reported total N; a matching total is not a
+  finding), and its finding must quote the line reporting the total N and the
   function call together. The validator has always required both in one quote. Haiku quoted
   only the comment and Luna only the call, so a correct finding was rejected on all 12 such
   tasks across the two models.

@@ -169,7 +169,7 @@ _PER_GROUP_SOURCE = ('# Manuscript reports total N = 178\n'
 
 def test_code_prompt_says_to_quote_the_reported_total_with_the_call():
     instructions = _instructions("code", _PER_GROUP_SOURCE)
-    assert "per_group_vs_total" in instructions and "reported total N line and the function call" in instructions
+    assert "per_group_vs_total" in instructions and "the line reporting the total" in instructions and "and the function call together" in instructions
 
 
 def test_the_quote_the_prompt_asks_for_is_one_the_validator_accepts():
@@ -186,3 +186,14 @@ def test_code_prompt_defines_per_group_vs_total_as_a_mismatch():
     # 0.9.2 source pretest: told what to quote, both models then raised per_group_vs_total on
     # consistent totals ("total N of 86 equals 2 x 43"). The prompt never defined the code.
     assert "A total N that matches is not a finding" in _instructions("code", _PER_GROUP_SOURCE)
+
+
+def test_code_prompt_promises_only_the_per_group_rule_the_validator_implements():
+    # Release review 2026-10-31: the prompt defined a statsmodels mismatch as nobs1*(1+ratio),
+    # but finding_supported compares only against 2*n for an equal-allocation call (unequal
+    # calls have no n_per_group), so a correct ratio=2 finding would always be rejected.
+    instructions = _instructions("code", _PER_GROUP_SOURCE)
+    assert "(1+ratio)" not in instructions
+    assert "equal-allocation call" in instructions and "Manuscript reports total N" in instructions
+    unequal = "# Manuscript reports total N = 100\nTTestIndPower().power(effect_size=0.5, nobs1=43, alpha=0.05, ratio=2)"
+    assert not finding_supported("per_group_vs_total", unequal, unequal)
