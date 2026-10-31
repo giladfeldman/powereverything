@@ -197,3 +197,10 @@ def test_code_prompt_promises_only_the_per_group_rule_the_validator_implements()
     assert "equal-allocation call" in instructions and "Manuscript reports total N" in instructions
     unequal = "# Manuscript reports total N = 100\nTTestIndPower().power(effect_size=0.5, nobs1=43, alpha=0.05, ratio=2)"
     assert not finding_supported("per_group_vs_total", unequal, unequal)
+
+
+def test_audit_prompt_defines_analysis_match_unresolved():
+    # 0.9.2 source pretest: the code is allowed but was never defined; Haiku raised it 5-7 times
+    # per 48 single-analysis sections, quoting the opening sentence.
+    instructions = _instructions("audit", "An a priori power analysis was conducted for a one-way ANOVA.")
+    assert "analysis_match_unresolved only when the section reports more than one analysis" in instructions.replace("Use analysis_match_unresolved", "analysis_match_unresolved")

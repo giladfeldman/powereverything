@@ -71,3 +71,7 @@ CITATION.cff still said 0.8.2 / 2026-09-27 while the package, CHANGELOG and docs
 ## 2026-10-30 - A text validator needs counter-examples from both directions, run more than once
 
 The 0.9.1 review validator went through three rounds: the cheapest-model pretest found six defects, a cross-model review of the fixes found four more, the release review found three, and a second cross-model pass found five more in those fixes ("estimated power was 0.62, below the planned 0.80" read the planned 0.80's wording onto the 0.62; "et al." merged real sentence ends; "sample-size" slipped past a single-space lookbehind). Sentence-wide keyword tests are too loose for attribution: tie qualifying wording to the number it qualifies, and test every rule with both an accept and a reject example before shipping.
+
+## 2026-10-31 - A prompt must promise exactly what its validator accepts
+
+Re-running the cheapest-model pretest on 0.9.1 showed two models failing the same tasks for the same reason: the code prompt never said that a `per_group_vs_total` finding must quote the total-N line and the function call together (the validator has always required both in one quote), and it let a readable `ratio=2` call be flagged as ambiguous. Correct findings were rejected on all 12 such tasks. 0.9.2 states the validator's rule in the prompt and no more (equal allocation only; a matching total is not a finding). Write the prompt from the validator's code, then pretest, not from the intent.

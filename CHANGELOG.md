@@ -12,7 +12,7 @@ version and only when a method's answers change. See
 
 ## 0.9.2 — 2026-10-31
 
-Code-review prompt only (prompt version 2026-10-31.1). No computed power, sample size or
+Review prompts only (prompt version 2026-10-31.1). No computed power, sample size or
 effect changes; no method version moves; the validator is unchanged. Found by re-running the
 cheapest-model pretest (Claude Haiku, Codex gpt-6-luna) on 0.9.1; each repair has a test
 observed failing on 0.9.1 (`tests/test_model_pretest_20261030.py`).
@@ -26,6 +26,9 @@ observed failing on 0.9.1 (`tests/test_model_pretest_20261030.py`).
 - Code prompt: unequal allocation alone is not a finding (return n_per_group null);
   unsupported_or_ambiguous_code is for a call that is not a recognised power function. Both
   models had flagged a readable ratio=2 call as ambiguous on all 12 such tasks.
+- Audit prompt: analysis_match_unresolved is defined (only when the section reports more than
+  one analysis and the power analysis cannot be matched to one). It was allowed but undefined;
+  Haiku raised it 5-7 times per 48 single-analysis sections.
 
 ## 0.9.1 — 2026-10-30
 
